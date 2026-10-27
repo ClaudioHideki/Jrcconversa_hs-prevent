@@ -27,14 +27,6 @@ class DashboardController < ActionController::Base
     INSTALLATION_PRICING_PLAN
   ].freeze
 
-  JRC_BRANDING_CONFIG = {
-    'INSTALLATION_NAME' => 'JRC Conversas',
-    'BRAND_NAME' => 'JRC Conversas',
-    'LOGO_THUMBNAIL' => '/brand-assets/logo-jrc-thumbnail.png',
-    'LOGO' => '/brand-assets/logo-jrc.png',
-    'LOGO_DARK' => '/brand-assets/logo-jrc-dark.png'
-  }.freeze
-
   before_action :set_application_pack
   before_action :set_global_config
   before_action :set_dashboard_scripts
@@ -53,7 +45,7 @@ class DashboardController < ActionController::Base
   end
 
   def set_global_config
-    @global_config = GlobalConfig.get(*GLOBAL_CONFIG_KEYS).merge(app_config).merge(JRC_BRANDING_CONFIG)
+    @global_config = GlobalConfig.get(*GLOBAL_CONFIG_KEYS).merge(app_config)
   end
 
   def set_dashboard_scripts

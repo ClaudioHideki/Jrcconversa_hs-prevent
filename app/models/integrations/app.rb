@@ -15,11 +15,11 @@ class Integrations::App
   end
 
   def description
-    I18n.t("integration_apps.#{params[:i18n_key]}.description")
+    JrcBranding.display_text(I18n.t("integration_apps.#{params[:i18n_key]}.description"))
   end
 
   def short_description
-    I18n.t("integration_apps.#{params[:i18n_key]}.short_description")
+    JrcBranding.display_text(I18n.t("integration_apps.#{params[:i18n_key]}.short_description"))
   end
 
   def logo

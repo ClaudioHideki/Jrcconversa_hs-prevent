@@ -6,7 +6,6 @@ import { useToggle } from '@vueuse/core';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
-
 const props = defineProps({
   note: {
     type: Object,
@@ -27,6 +26,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['delete']);
+
+const fallbackAvatar =
+  window.globalConfig?.LOGO_THUMBNAIL || '/brand-assets/logo-jrc-thumbnail.png';
+
 const noteContentRef = useTemplateRef('noteContentRef');
 const needsCollapse = ref(false);
 const [isExpanded, toggleExpanded] = useToggle();
@@ -53,11 +56,7 @@ onMounted(() => {
       <div class="flex items-center gap-1.5 min-w-0">
         <Avatar
           :name="note?.user?.name || 'Bot'"
-          :src="
-            note?.user?.name
-              ? note?.user?.thumbnail
-              : '/assets/images/chatwoot_bot.png'
-          "
+          :src="note?.user?.name ? note?.user?.thumbnail : fallbackAvatar"
           :size="16"
           rounded-full
         />

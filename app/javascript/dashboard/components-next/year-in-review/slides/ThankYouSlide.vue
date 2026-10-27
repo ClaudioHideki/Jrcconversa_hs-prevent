@@ -11,7 +11,8 @@ defineProps({
 const { t } = useI18n();
 
 const signatureImage =
-  '/assets/images/dashboard/year-in-review/fifth-frame-signature.png';
+  window.globalConfig?.LOGO || '/brand-assets/logo-jrc.png';
+const brandName = window.globalConfig?.INSTALLATION_NAME || 'JRC Conversas';
 </script>
 
 <template>
@@ -34,7 +35,7 @@ const signatureImage =
       <div class="mt-12">
         <img
           :src="signatureImage"
-          alt="Chatwoot Team Signature"
+          :alt="brandName"
           class="w-auto h-8 md:h-10"
         />
       </div>

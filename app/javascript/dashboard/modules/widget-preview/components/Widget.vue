@@ -243,7 +243,9 @@ const handleToggleWidget = () => {
           :script="widgetScript"
           lang="html"
           class="!text-start"
-          :codepen-title="`${websiteName} - Chatwoot Widget Test`"
+          :codepen-title="
+            replaceInstallationName(`${websiteName} - Chatwoot Widget Test`)
+          "
           enable-code-pen
         />
       </div>

@@ -51,7 +51,8 @@ export default {
       // eslint-disable-next-line
       const displayImage = this.useInboxAvatarForBot
         ? this.inboxAvatarUrl
-        : '/assets/images/chatwoot_bot.png';
+        : window.globalConfig?.LOGO_THUMBNAIL ||
+          '/brand-assets/logo-jrc-thumbnail.png';
       if (this.isSenderExist(this.sender)) {
         const { avatar_url: avatarUrl } = this.sender;
         return avatarUrl;

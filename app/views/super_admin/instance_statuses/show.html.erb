@@ -14,7 +14,7 @@
   </tr>
   <% @metrics.each do |key,value| %>
    <tr>
-   <td> <%= key %> </td>
+   <td> <%= JrcBranding.display_text(key) %> </td>
    <td> <%= value %></td>
   </tr>
   <% end %>

@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { withInstallationBranding } from 'shared/helpers/branding';
 
 import i18nMessages from 'dashboard/i18n';
 import * as Sentry from '@sentry/vue';
@@ -20,7 +21,10 @@ import FluentIcon from 'shared/components/FluentIcon/DashboardIcon.vue';
 const i18n = createI18n({
   legacy: false, // https://github.com/intlify/vue-i18n/issues/1902
   locale: 'en',
-  messages: i18nMessages,
+  messages: withInstallationBranding(
+    i18nMessages,
+    window.globalConfig?.INSTALLATION_NAME
+  ),
 });
 
 const app = createApp(App);

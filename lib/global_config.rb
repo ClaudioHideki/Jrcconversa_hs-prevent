@@ -47,7 +47,7 @@ class GlobalConfig
         $alfred.with { |conn| conn.set(cache_key, cached_value, { ex: DEFAULT_EXPIRY }) }
       end
 
-      JSON.parse(cached_value)['value']
+      JrcBranding.resolve(config_key, JSON.parse(cached_value)['value'])
     end
 
     def db_fallback(config_key)

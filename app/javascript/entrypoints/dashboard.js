@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { withInstallationBranding } from 'shared/helpers/branding';
 
 import axios from 'axios';
 // Global Components
@@ -36,7 +37,10 @@ import 'floating-vue/dist/style.css';
 const i18n = createI18n({
   legacy: false, // https://github.com/intlify/vue-i18n/issues/1902
   locale: 'en',
-  messages: i18nMessages,
+  messages: withInstallationBranding(
+    i18nMessages,
+    window.globalConfig?.INSTALLATION_NAME
+  ),
 });
 
 sync(store, router);

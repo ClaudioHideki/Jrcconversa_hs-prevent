@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { withInstallationBranding } from 'shared/helpers/branding';
 import VueDOMPurifyHTML from 'vue-dompurify-html';
 import store from '../survey/store';
 import i18nMessages from '../survey/i18n';
@@ -9,7 +10,10 @@ import { domPurifyConfig } from '../shared/helpers/HTMLSanitizer';
 const app = createApp(App);
 const i18n = createI18n({
   locale: 'en',
-  messages: i18nMessages,
+  messages: withInstallationBranding(
+    i18nMessages,
+    window.globalConfig?.BRAND_NAME
+  ),
 });
 
 app.use(i18n);
