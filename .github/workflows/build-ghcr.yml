@@ -1,4 +1,4 @@
-name: Build JRC Conversas Final V5
+name: Build JRC Conversas SMS Flux
 
 on:
   push:
@@ -12,8 +12,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: claudiohideki/jrcconversas-final-v5-20260821
-  IMAGE_TAG: 4.16.2-jrc-final-v5-20260821
+  IMAGE_NAME: claudiohideki/jrcconversa_hs-prevent
+  IMAGE_TAG: 4.16.2-jrc-sms-flux-20261027
 
 jobs:
   build-and-push:

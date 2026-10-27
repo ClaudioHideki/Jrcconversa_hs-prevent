@@ -14,6 +14,7 @@ import { useVuelidate } from '@vuelidate/core';
 import { required } from '@vuelidate/validators';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import TextArea from 'next/textarea/TextArea.vue';
+import FluxSms from '../channels/FluxSms.vue';
 import { sanitizeAllowedDomains } from 'dashboard/helper/URLHelper';
 
 export default {
@@ -25,6 +26,7 @@ export default {
     SmtpSettings,
     NextButton,
     TextArea,
+    FluxSms,
   },
   mixins: [inboxMixin],
   props: {
@@ -222,7 +224,11 @@ export default {
 </script>
 
 <template>
-  <div v-if="isATwilioChannel">
+  <FluxSms
+    v-if="inbox.channel_type === 'Channel::Sms' && inbox.provider === 'flux'"
+    :inbox="inbox"
+  />
+  <div v-else-if="isATwilioChannel">
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.ADD.TWILIO.API_CALLBACK.TITLE')"
       :help-text="$t('INBOX_MGMT.ADD.TWILIO.API_CALLBACK.SUBTITLE')"

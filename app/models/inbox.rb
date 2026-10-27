@@ -195,6 +195,8 @@ class Inbox < ApplicationRecord
     when 'Channel::TwilioSms'
       "#{ENV.fetch('FRONTEND_URL', nil)}/twilio/callback"
     when 'Channel::Sms'
+      return channel.flux_callback_url if channel.flux?
+
       "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/sms/#{channel.phone_number.delete_prefix('+')}"
     when 'Channel::Line'
       "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/line/#{channel.line_channel_id}"

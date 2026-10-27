@@ -19,9 +19,14 @@ class Channel::Sms < ApplicationRecord
   include Channelable
 
   self.table_name = 'channel_sms'
-  EDITABLE_ATTRS = [:phone_number, { provider_config: {} }].freeze
+  EDITABLE_ATTRS = [:phone_number, :provider, :flux_account, :flux_code, { provider_config: {} }].freeze
+  attr_accessor :flux_account, :flux_code
 
-  validates :phone_number, presence: true, uniqueness: true
+  validates :phone_number, presence: true, uniqueness: true, unless: :flux?
+  validates :provider, inclusion: { in: %w[default bandwidth flux] }
+  before_validation :configure_flux, if: :flux?
+  validate :validate_flux, if: :flux?
+  validate :prevent_provider_change, on: :update
   # before_save :validate_provider_config
 
   def name
@@ -34,6 +39,8 @@ class Channel::Sms < ApplicationRecord
   end
 
   def send_message(contact_number, message)
+    return Sms::Providers::FluxService.new(self).send_message(contact_number, message) if flux?
+
     body = message_body(contact_number, message.outgoing_content)
     body['media'] = message.attachments.map(&:download_url) if message.attachments.present?
 
@@ -41,11 +48,60 @@ class Channel::Sms < ApplicationRecord
   end
 
   def send_text_message(contact_number, message_content)
+    return Sms::Providers::FluxService.new(self).send_text(contact_number, message_content) if flux?
+
     body = message_body(contact_number, message_content)
     send_to_bandwidth(body)
   end
 
+  def flux?
+    provider == 'flux'
+  end
+
+  def flux_secrets
+    return {} if flux_credentials.blank?
+
+    Sms::FluxCredentials.decrypt(flux_credentials)
+  end
+
+  def flux_callback_url
+    "#{ENV.fetch('FRONTEND_URL').delete_suffix('/')}/f?t=#{flux_secrets.fetch('callback_token')}"
+  end
+
+  def flux_public_config
+    secrets = flux_secrets
+    provider_config.slice('send_type', 'client').merge(
+      'account_masked' => secrets.fetch('account', '').gsub(/.(?=.{3})/, '*'),
+      'configured' => secrets['code'].present?
+    )
+  end
+
   private
+
+  def configure_flux
+    self.phone_number = nil
+    secrets = flux_secrets
+    secrets['account'] = flux_account.strip if flux_account.present?
+    secrets['code'] = flux_code if flux_code.present?
+    secrets['callback_token'] ||= SecureRandom.urlsafe_base64(12)
+    self.flux_credentials = Sms::FluxCredentials.encrypt(secrets)
+    self.flux_callback_digest = Digest::SHA256.hexdigest(secrets.fetch('callback_token'))
+    self.provider_config = (provider_config || {}).slice('send_type', 'client').reverse_merge('send_type' => '1')
+  end
+
+  def validate_flux
+    secrets = flux_secrets
+    errors.add(:flux_account, :blank) if secrets['account'].blank?
+    errors.add(:flux_code, :blank) if secrets['code'].blank?
+    errors.add(:flux_account, :invalid) if secrets['account'].to_s.match?(/[\r\n]/) || secrets['account'].to_s.length > 100
+    errors.add(:flux_code, :invalid) if secrets['code'].to_s.match?(/[\r\n]/)
+    errors.add(:provider_config, :invalid) unless %w[1 2 4 7].include?(provider_config['send_type'].to_s)
+    errors.add(:provider_config, :too_long, count: 200) if provider_config['client'].to_s.length > 200
+  end
+
+  def prevent_provider_change
+    errors.add(:provider, :invalid) if provider_changed?
+  end
 
   def message_body(contact_number, message_content)
     {

@@ -149,6 +149,7 @@ Rails.application.routes.draw do
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
           namespace :channels do
+            post 'flux/test_connection', to: 'flux#test_connection'
             resource :twilio_channel, only: [:create]
           end
           resources :conversations, only: [:index, :create, :show, :update, :destroy] do
@@ -656,6 +657,9 @@ Rails.application.routes.draw do
   post 'webhooks/line/:line_channel_id', to: 'webhooks/line#process_payload'
   post 'webhooks/telegram/:bot_token', to: 'webhooks/telegram#process_payload'
   post 'webhooks/sms/:phone_number', to: 'webhooks/sms#process_payload'
+  # Short URL respects Flux's documented 50-character callback URL limit on the JRC host.
+  post 'f', to: 'webhooks/flux#process_payload'
+  post 'api/integrations/flux/callback', to: 'webhooks/flux#process_payload'
   get 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#verify'
   post 'webhooks/whatsapp/:phone_number', to: 'webhooks/whatsapp#process_payload'
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'

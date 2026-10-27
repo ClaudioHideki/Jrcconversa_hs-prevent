@@ -192,7 +192,8 @@
         "PROVIDERS": {
           "LABEL": "API Provider",
           "TWILIO": "Twilio",
-          "BANDWIDTH": "Bandwidth"
+          "BANDWIDTH": "Bandwidth",
+          "FLUX": "Flux Telecom"
         },
         "API": {
           "ERROR_MESSAGE": "We were not able to save the SMS channel"
@@ -236,6 +237,32 @@
             "TITLE": "Callback URL",
             "SUBTITLE": "You have to configure the message callback URL in Bandwidth with the URL mentioned here."
           }
+        },
+        "FLUX": {
+          "DESCRIPTION": "Envie SMS e receba respostas com a Flux Telecom. O remetente é definido pela rota da operadora.",
+          "INBOX_NAME": "Nome da Caixa de Entrada",
+          "NAME_PLACEHOLDER": "Ex.: SMS - Operadora JRC",
+          "ACCOUNT": "Login / Account",
+          "ACCOUNT_PLACEHOLDER": "Informe seu login na Flux",
+          "CODE": "Senha / Code",
+          "CODE_PLACEHOLDER": "Informe sua senha da Flux",
+          "KEEP_SECRET": "Deixe vazio para manter a credencial salva",
+          "SEND_TYPE": "Tipo de Envio",
+          "TYPE_1": "1 - SMS Simples / Longcode",
+          "TYPE_2": "2 - SMS Shortcode Token",
+          "TYPE_4": "4 - SMS Carta",
+          "TYPE_7": "7 - SMS Shortcode Plus",
+          "CLIENT": "Centro de Custo (opcional)",
+          "CLIENT_PLACEHOLDER": "Ex.: JRC",
+          "CALLBACK": "URL de Callback",
+          "CALLBACK_HELP": "O callback e o token são gerados automaticamente e enviados à Flux com cada SMS.",
+          "IP_HELP": "Libere na Flux o IP público de saída do servidor JRC antes de enviar.",
+          "TEST": "Testar conexão",
+          "CREATE": "Criar canal Flux",
+          "SAVE": "Salvar configuração",
+          "TEST_SUCCESS": "Consulta autenticada com sucesso. A liberação do IP para envio deve ser confirmada na Flux.",
+          "ERROR": "Não foi possível concluir. Verifique as credenciais e a liberação do IP na Flux.",
+          "SAVED": "Configuração Flux salva com sucesso."
         }
       },
       "WHATSAPP": {

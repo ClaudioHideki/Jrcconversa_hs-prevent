@@ -202,6 +202,8 @@ export default {
 
       if (
         this.isATwilioChannel ||
+        (this.inbox.channel_type === 'Channel::Sms' &&
+          this.inbox.provider === 'flux') ||
         this.isALineChannel ||
         this.isAPIInbox ||
         (this.isAnEmailChannel && !this.inbox.provider) ||

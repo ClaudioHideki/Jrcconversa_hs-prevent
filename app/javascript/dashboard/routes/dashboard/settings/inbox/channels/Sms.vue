@@ -2,12 +2,14 @@
 import PageHeader from '../../SettingsSubPageHeader.vue';
 import BandwidthSms from './BandwidthSms.vue';
 import Twilio from './Twilio.vue';
+import FluxSms from './FluxSms.vue';
 
 export default {
   components: {
     PageHeader,
     Twilio,
     BandwidthSms,
+    FluxSms,
   },
   data() {
     return {
@@ -33,10 +35,14 @@ export default {
           <option value="360dialog">
             {{ $t('INBOX_MGMT.ADD.SMS.PROVIDERS.BANDWIDTH') }}
           </option>
+          <option value="flux">
+            {{ $t('INBOX_MGMT.ADD.SMS.PROVIDERS.FLUX') }}
+          </option>
         </select>
       </label>
     </div>
     <Twilio v-if="provider === 'twilio'" type="sms" />
+    <FluxSms v-else-if="provider === 'flux'" />
     <BandwidthSms v-else />
   </div>
 </template>

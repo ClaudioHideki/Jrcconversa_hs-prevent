@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_13_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_27_180000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -592,11 +592,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_13_150000) do
 
   create_table "channel_sms", force: :cascade do |t|
     t.integer "account_id", null: false
-    t.string "phone_number", null: false
+    t.string "phone_number"
     t.string "provider", default: "default"
     t.jsonb "provider_config", default: {}
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.text "flux_credentials"
+    t.string "flux_callback_digest"
+    t.index ["flux_callback_digest"], name: "index_channel_sms_on_flux_callback_digest", unique: true
     t.index ["phone_number"], name: "index_channel_sms_on_phone_number", unique: true
   end
 
