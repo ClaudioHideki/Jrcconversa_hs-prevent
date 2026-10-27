@@ -23,7 +23,7 @@ class Channel::Sms < ApplicationRecord
   attr_accessor :flux_account, :flux_code
 
   validates :phone_number, presence: true, uniqueness: true, unless: :flux?
-  validates :provider, inclusion: { in: %w[default bandwidth flux] }
+  validates :provider, inclusion: { in: %w[default bandwidth flux] }, on: :create
   before_validation :configure_flux, if: :flux?
   validate :validate_flux, if: :flux?
   validate :prevent_provider_change, on: :update
