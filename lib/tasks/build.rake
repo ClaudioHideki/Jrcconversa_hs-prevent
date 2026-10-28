@@ -2,9 +2,9 @@
 # https://github.com/rails/rails/issues/43906#issuecomment-1099992310
 task before_assets_precompile: :environment do
   # run a command which starts your packaging
-  system('pnpm install')
+  system('pnpm install --frozen-lockfile', exception: true)
   system('echo "-------------- Bulding SDK for Production --------------"')
-  system('pnpm run build:sdk')
+  system('pnpm run build:sdk', exception: true)
   system('echo "-------------- Bulding App for Production --------------"')
 end
 

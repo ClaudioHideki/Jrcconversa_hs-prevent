@@ -10,6 +10,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: claudiohideki/jrcconversa_hs-prevent
@@ -18,10 +22,16 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Free runner space for the production image
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
 
       - name: Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -34,13 +44,30 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          build-args: |
+            SOURCE_REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=JRC Conversas HS Prevent - SMS Flux
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      - name: Record the published image
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          printf '### Imagem publicada\n\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '`%s/%s:%s`\n\n' "$REGISTRY" "$IMAGE_NAME" "$IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Digest: `%s`\n' "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"

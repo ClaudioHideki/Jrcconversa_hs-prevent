@@ -72,7 +72,7 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   fi
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm i
+RUN pnpm install --frozen-lockfile
 
 COPY . /app
 
@@ -83,11 +83,14 @@ RUN mkdir -p /app/log
 # generate production assets if production environment
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
+  && test -s public/packs/js/sdk.js \
+  && test -s public/vite/.vite/manifest.json \
   && rm -rf spec node_modules tmp/cache; \
   fi
 
-# Generate .git_sha from Git when available, or identify ZIP-based local builds.
-RUN (git rev-parse HEAD 2>/dev/null || echo local-development) > /app/.git_sha
+# Git metadata is excluded from the Docker context; Actions supplies the source revision.
+ARG SOURCE_REVISION=local-development
+RUN printf '%s\n' "$SOURCE_REVISION" > /app/.git_sha
 
 # Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
