@@ -264,6 +264,8 @@
           "CLIENT_PLACEHOLDER": "Ex.: JRC",
           "CALLBACK": "URL de Callback",
           "CALLBACK_HELP": "O callback e o token são gerados automaticamente e enviados à Flux com cada SMS.",
+          "MO_POLLING": "Buscar respostas automaticamente como reserva",
+          "MO_POLLING_HELP": "Consulta a Flux a cada 1 minuto para recuperar respostas ausentes de hoje e ontem, nas conversas desta caixa. O callback continua ativo. A execução depende da fila; limites da Flux podem adiar a consulta. A ativação pode recuperar respostas anteriores ainda não recebidas no JRC.",
           "IP_HELP": "Libere na Flux o IP público de saída do servidor JRC antes de enviar.",
           "TEST": "Testar conexão",
           "CREATE": "Criar canal Flux",

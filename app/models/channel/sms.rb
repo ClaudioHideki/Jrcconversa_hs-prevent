@@ -68,9 +68,14 @@ class Channel::Sms < ApplicationRecord
     "#{ENV.fetch('FRONTEND_URL').delete_suffix('/')}/f?t=#{flux_secrets.fetch('callback_token')}"
   end
 
+  def flux_mo_polling_enabled?
+    flux? && ActiveModel::Type::Boolean.new.cast(provider_config['mo_polling_enabled']) == true
+  end
+
   def flux_public_config
     secrets = flux_secrets
     provider_config.slice('send_type', 'client').merge(
+      'mo_polling_enabled' => flux_mo_polling_enabled?,
       'account_masked' => secrets.fetch('account', '').gsub(/.(?=.{3})/, '*'),
       'configured' => secrets['code'].present?
     )
@@ -86,7 +91,10 @@ class Channel::Sms < ApplicationRecord
     secrets['callback_token'] ||= SecureRandom.urlsafe_base64(12)
     self.flux_credentials = Sms::FluxCredentials.encrypt(secrets)
     self.flux_callback_digest = Digest::SHA256.hexdigest(secrets.fetch('callback_token'))
-    self.provider_config = (provider_config || {}).slice('send_type', 'client').reverse_merge('send_type' => '1')
+    previous_polling = (provider_config_in_database || {})['mo_polling_enabled'] || false
+    self.provider_config = (provider_config || {}).slice('send_type', 'client', 'mo_polling_enabled')
+                                                .reverse_merge('send_type' => '1', 'mo_polling_enabled' => previous_polling)
+    self.provider_config['mo_polling_enabled'] = ActiveModel::Type::Boolean.new.cast(provider_config['mo_polling_enabled']) == true
   end
 
   def validate_flux

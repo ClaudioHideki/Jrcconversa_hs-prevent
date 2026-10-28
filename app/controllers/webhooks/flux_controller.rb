@@ -10,7 +10,7 @@ class Webhooks::FluxController < ActionController::API
     events = raw['mensagens'] || [raw]
     return head :unprocessable_entity unless events.is_a?(Array) && events.size.between?(1, 1000) && events.all? { |event| event.is_a?(Hash) }
 
-    events = events.map { |event| event.slice('telefone', 'data', 'id', 'idParceiro', 'status', 'resposta') }
+    events = events.map { |event| event.slice('telefone', 'data', 'id', 'idParceiro', 'idResposta', 'status', 'resposta') }
     Webhooks::FluxEventsJob.perform_later(channel.id, events)
     render plain: 'OK'
   end

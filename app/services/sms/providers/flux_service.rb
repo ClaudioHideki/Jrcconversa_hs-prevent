@@ -70,6 +70,22 @@ class Sms::Providers::FluxService
     nil
   end
 
+  def fetch_replies
+    secrets = @channel.flux_secrets
+    today = Time.current.in_time_zone('America/Sao_Paulo').to_date
+    response = HTTParty.get(
+      "#{API_BASE}/pesquisaResposta",
+      query: { account: secrets.fetch('account'), code: secrets.fetch('code'),
+               dataInicio: (today - 1).strftime('%d/%m/%Y'), dataFim: today.strftime('%d/%m/%Y') },
+      timeout: 20, follow_redirects: false
+    )
+    raise Error, 'Flux MO: API indisponivel.' unless response.code.to_i == 200
+
+    Sms::FluxMoResponseParser.parse(response.body)
+  rescue *network_errors
+    raise Error, 'Flux MO: falha de conexao HTTPS; a consulta sera retomada no proximo ciclo.'
+  end
+
   def send_text(phone, text, partner_id: "JRC-#{SecureRandom.uuid}")
     phone = self.class.normalize_phone(phone)
     limit = @channel.provider_config['send_type'].to_s == '4' ? 1280 : 160

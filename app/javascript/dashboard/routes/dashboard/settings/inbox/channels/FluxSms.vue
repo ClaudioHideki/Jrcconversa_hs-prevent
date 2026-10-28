@@ -16,6 +16,9 @@ const account = ref('');
 const code = ref('');
 const sendType = ref(props.inbox?.provider_config?.send_type || '1');
 const client = ref(props.inbox?.provider_config?.client || '');
+const moPollingEnabled = ref(
+  props.inbox?.provider_config?.mo_polling_enabled === true
+);
 const busy = ref(false);
 const testing = ref(false);
 const testResult = ref('');
@@ -66,6 +69,7 @@ async function save() {
       provider_config: {
         send_type: sendType.value,
         client: client.value.trim(),
+        mo_polling_enabled: moPollingEnabled.value,
       },
     };
     if (props.inbox) {
@@ -161,6 +165,13 @@ async function save() {
         :placeholder="t('INBOX_MGMT.ADD.SMS.FLUX.CLIENT_PLACEHOLDER')"
       />
     </label>
+    <label class="flex items-center gap-2">
+      <input v-model="moPollingEnabled" type="checkbox" />
+      {{ t('INBOX_MGMT.ADD.SMS.FLUX.MO_POLLING') }}
+    </label>
+    <p class="text-sm text-n-slate-11">
+      {{ t('INBOX_MGMT.ADD.SMS.FLUX.MO_POLLING_HELP') }}
+    </p>
     <label v-if="inbox?.callback_webhook_url">
       {{ t('INBOX_MGMT.ADD.SMS.FLUX.CALLBACK') }}
       <input :value="inbox.callback_webhook_url" type="text" readonly />
