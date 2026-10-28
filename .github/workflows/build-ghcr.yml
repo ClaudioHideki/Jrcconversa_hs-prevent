@@ -17,7 +17,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: claudiohideki/jrcconversa_hs-prevent
-  IMAGE_TAG: 4.16.2-jrc-sms-flux-20261027
+  IMAGE_TAG: 4.16.2-jrc-flux-fallback-20261028
 
 jobs:
   build-and-push:

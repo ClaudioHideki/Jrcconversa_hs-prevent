@@ -138,10 +138,15 @@ class Message < ApplicationRecord
   after_create_commit :execute_after_create_commit_callbacks
 
   after_update_commit :dispatch_update_event
+  after_update_commit :sync_sms_fallback_status, if: -> { content_attributes['flux_fallback_origin_message_id'].present? }
   after_commit :reindex_for_search, if: :should_index?, on: [:create, :update]
 
   def channel_token
     @token ||= inbox.channel.try(:page_access_token)
+  end
+
+  def sync_sms_fallback_status
+    Sms::TwilioFallbackService.sync_status(self)
   end
 
   def push_event_data

@@ -1,5 +1,25 @@
 {
   "CONVERSATION": {
+    "FLUX_FALLBACK": {
+      "WAITING": "Flux backup SMS: waiting for Twilio delivery",
+      "SENDING": "Flux backup SMS: attempt started",
+      "SENT": "Flux backup SMS: accepted, awaiting delivery",
+      "DELIVERED": "Flux backup SMS: delivered",
+      "FAILED": "Flux backup SMS: failed or unconfirmed; no automatic repeat",
+      "SKIPPED": "Flux backup SMS: not sent",
+      "PRIMARY_DELIVERED": "Twilio delivery confirmed; backup SMS not needed",
+      "OPEN": "Open SMS conversation",
+      "REASONS": {
+        "DISABLED": "The backup inbox was disabled, changed or removed",
+        "DELETED": "The original message was deleted or made private",
+        "PRIMARY_CHANGED": "The original Twilio attempt was replaced",
+        "ATTACHMENTS": "SMS does not support this attachment",
+        "TEMPLATE_BODY": "The resolved template text is unavailable",
+        "TEXT_LIMIT": "The text is empty or exceeds the Flux service limit",
+        "INVALID_PHONE": "The destination is not a supported Brazilian phone number",
+        "OPTED_OUT": "The recipient opted out or blocked messages"
+      }
+    },
     "SELECT_A_CONVERSATION": "Please select a conversation from left pane",
     "CSAT_REPLY_MESSAGE": "Please rate the conversation",
     "404": "Sorry, we cannot find the conversation. Please try again",

@@ -15,8 +15,11 @@ class Sms::Providers::FluxService
   end
 
   def self.normalize_phone(value)
-    phone = value.to_s.gsub(/\D/, '')
-    phone = "55#{phone}" if [10, 11].include?(phone.length)
+    raw = value.to_s.strip
+    phone = raw.gsub(/\D/, '')
+    international = raw.start_with?('+', '00')
+    phone = phone.delete_prefix('00') if raw.start_with?('00')
+    phone = "55#{phone}" if !international && [10, 11].include?(phone.length)
     raise Error, 'Flux: informe um celular brasileiro com DDD.' unless phone.match?(/\A55[1-9]\d{9,10}\z/)
 
     phone

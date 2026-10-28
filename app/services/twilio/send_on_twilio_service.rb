@@ -1,4 +1,9 @@
 class Twilio::SendOnTwilioService < Base::SendOnChannelService
+  def perform
+    Sms::TwilioFallbackService.enqueue_pending(message)
+    super
+  end
+
   def send_csat_template_message(phone_number:, content_sid:, content_variables: {})
     send_params = {
       to: phone_number,
@@ -35,7 +40,10 @@ class Twilio::SendOnTwilioService < Base::SendOnChannelService
     rescue Twilio::REST::TwilioError, Twilio::REST::RestError => e
       Messages::StatusUpdateService.new(message, 'failed', e.message).perform
     end
-    message.update!(source_id: twilio_message.sid) if twilio_message
+    if twilio_message
+      message.update!(source_id: twilio_message.sid)
+      Sms::TwilioFallbackService.schedule(message, twilio_message.body) if channel.flux_fallback_inbox.present?
+    end
   end
 
   def send_template_message

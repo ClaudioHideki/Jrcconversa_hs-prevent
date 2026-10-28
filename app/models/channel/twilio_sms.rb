@@ -41,8 +41,12 @@ class Channel::TwilioSms < ApplicationRecord
 
   EDITABLE_ATTRS = [
     :account_sid,
-    :auth_token
+    :auth_token,
+    :flux_fallback_inbox_id
   ].freeze
+
+  store_accessor :provider_config, :flux_fallback_inbox_id
+  validate :validate_flux_fallback_inbox
 
   # Must have _one_ of messaging_service_sid _or_ phone_number, and messaging_service_sid is preferred
   validates :messaging_service_sid, uniqueness: true, presence: true, unless: :phone_number?
@@ -75,7 +79,21 @@ class Channel::TwilioSms < ApplicationRecord
     end
   end
 
+  def flux_fallback_inbox
+    return if flux_fallback_inbox_id.blank?
+
+    target = account.inboxes.find_by(id: flux_fallback_inbox_id)
+    target if target&.channel.is_a?(Channel::Sms) && target.channel.flux? && target.channel.account_id == account_id
+  end
+
   private
+
+  def validate_flux_fallback_inbox
+    return if flux_fallback_inbox_id.blank?
+    return if flux_fallback_inbox_id.to_s.match?(/\A[1-9]\d*\z/) && flux_fallback_inbox.present?
+
+    errors.add(:flux_fallback_inbox_id, :invalid)
+  end
 
   def send_message_from
     if messaging_service_sid?

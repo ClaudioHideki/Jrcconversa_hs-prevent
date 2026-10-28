@@ -13,9 +13,18 @@ class Twilio::DeliveryStatusService
   private
 
   def process_statuses
-    @message.status = status
-    @message.external_error = external_error if error_occurred?
-    @message.save!
+    @message.with_lock do
+      return if @message.read?
+      return if @message.delivered? && status != 'read'
+      return if @message.failed? && status == 'sent'
+
+      error = status == 'failed' ? (external_error.presence || @message.external_error) : nil
+      error_code = params[:ErrorCode].presence || @message.content_attributes['twilio_error_code'] if status == 'failed'
+      @message.update!(
+        status: status, external_error: error,
+        content_attributes: @message.content_attributes.merge('twilio_error_code' => error_code&.to_s)
+      )
+    end
   end
 
   def supported_status?

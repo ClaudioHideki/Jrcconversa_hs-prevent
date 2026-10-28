@@ -25,6 +25,53 @@ Credenciais e token são criptografados com AES-256-GCM usando uma chave derivad
 
 ## Imagem e atualização
 
+### Reserva automática para Twilio SMS e WhatsApp
+
+Em Configurações > Caixas de Entrada > caixa Twilio > Configuração, a seção
+`Backup SMS via Flux` permite selecionar uma caixa Flux da mesma conta.
+O padrão é desativado. Selecionar `Disabled` e salvar desativa a reserva;
+trocar ou excluir a caixa de destino também cancela tentativas ainda pendentes.
+
+Após o Twilio aceitar uma mensagem, um job é agendado para 60 segundos depois.
+Ele consulta o status no Twilio e verifica novamente o último callback salvo.
+`delivered` ou `read` cancela o SMS de reserva. Sem confirmação, realiza uma
+única tentativa pela Flux. A execução depende da fila Sidekiq; não é um
+temporizador exato no navegador. Se a consulta Twilio estiver indisponível,
+o sistema usa a última confirmação local e o texto salvo, mantendo a regra
+de uma tentativa. Templates precisam do corpo resolvido obtido do Twilio.
+
+O envio Flux cria uma mensagem na caixa Flux, com o contato e o telefone da
+mensagem original. O histórico original exibe separadamente o resultado de
+reserva e um link para a conversa SMS, quando o agente tem acesso à caixa.
+As respostas ao SMS entram na conversa Flux. O ID e o status original do
+Twilio não são substituídos pelo resultado da Flux.
+
+Notas privadas, mensagens excluídas, anexos e destinos fora do formato
+brasileiro suportado não são reenviados. O texto deve caber integralmente no
+limite do serviço Flux: não há corte ou divisão automática. Bloqueios e
+cancelamentos de recebimento informados pelo Twilio (`21610`, `63014`,
+`63033`, `63050`) impedem o envio de reserva.
+
+Uma trava no registro original permite somente uma tentativa de reserva,
+inclusive com jobs concorrentes ou repetidos. Timeout ou resultado incerto
+na Flux não provoca repetição automática. Se o worker parar após iniciar a
+tentativa, a interface mantém esse estado para conferência antes de qualquer
+reenvio manual. Uma confirmação atrasada do Twilio ainda pode resultar em
+duas entregas e duas cobranças: a ausência de confirmação não prova que o
+primeiro SMS deixou de chegar.
+
+Configure somente caixas que possam enviar SMS aos destinatários previstos.
+Libere o IP público de saída do servidor na Flux antes de ativar a opção.
+Esta funcionalidade usa os campos JSON existentes; não adiciona migration.
+
+Imagem da atualização de reserva:
+
+```yaml
+image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-fallback-20261028
+```
+
+A imagem anterior `4.16.2-jrc-sms-flux-20261027` permanece preservada.
+
 Build convencional a partir deste código:
 
 ```sh

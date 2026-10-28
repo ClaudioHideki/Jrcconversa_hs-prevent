@@ -43,6 +43,7 @@ import FormBubble from './bubbles/Form.vue';
 import VoiceCallBubble from './bubbles/VoiceCall.vue';
 
 import MessageError from './MessageError.vue';
+import FluxFallbackStatus from './FluxFallbackStatus.vue';
 import ContextMenu from 'dashboard/modules/conversations/components/MessageContextMenu.vue';
 import { useBranding } from 'shared/composables/useBranding';
 
@@ -572,10 +573,15 @@ provideMessageContext({
         :class="{
           'ltr:ml-8 rtl:mr-8 justify-end': orientation === ORIENTATION.RIGHT,
           'ltr:mr-8 rtl:ml-8': orientation === ORIENTATION.LEFT,
+          'flex-col items-end': !!contentAttributes.smsFallback,
         }"
         @contextmenu="openContextMenu($event)"
       >
         <Component :is="componentToRender" />
+        <FluxFallbackStatus
+          v-if="contentAttributes.smsFallback"
+          :fallback="contentAttributes.smsFallback"
+        />
       </div>
       <MessageError
         v-if="contentAttributes.externalError"
