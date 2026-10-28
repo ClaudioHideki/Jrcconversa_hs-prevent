@@ -6,12 +6,13 @@ import { MESSAGE_STATUS } from './constants';
 
 import Icon from 'next/icon/Icon.vue';
 
-const { status } = defineProps({
+const props = defineProps({
   status: {
     type: String,
     required: true,
     validator: value => Object.values(MESSAGE_STATUS).includes(value),
   },
+  sentTooltip: { type: String, default: '' },
 });
 
 const { t } = useI18n();
@@ -40,7 +41,7 @@ const rotateIcon = () => {
 };
 
 useIntervalFn(rotateIcon, 500, {
-  immediate: status === MESSAGE_STATUS.PROGRESS,
+  immediate: props.status === MESSAGE_STATUS.PROGRESS,
   immediateCallback: false,
 });
 
@@ -51,7 +52,7 @@ const statusIcon = computed(() => {
     [MESSAGE_STATUS.READ]: 'i-lucide-check-check',
   };
 
-  return statusIconMap[status];
+  return statusIconMap[props.status];
 });
 
 const statusColor = computed(() => {
@@ -61,18 +62,18 @@ const statusColor = computed(() => {
     [MESSAGE_STATUS.READ]: 'text-[#7EB6FF]',
   };
 
-  return statusIconMap[status];
+  return statusIconMap[props.status];
 });
 
 const tooltipText = computed(() => {
   const statusTextMap = {
-    [MESSAGE_STATUS.SENT]: t('CHAT_LIST.SENT'),
+    [MESSAGE_STATUS.SENT]: props.sentTooltip || t('CHAT_LIST.SENT'),
     [MESSAGE_STATUS.DELIVERED]: t('CHAT_LIST.DELIVERED'),
     [MESSAGE_STATUS.READ]: t('CHAT_LIST.MESSAGE_READ'),
     [MESSAGE_STATUS.PROGRESS]: t('CHAT_LIST.SENDING'),
   };
 
-  return statusTextMap[status];
+  return statusTextMap[props.status];
 });
 </script>
 

@@ -51,6 +51,12 @@ const showStatusIndicator = computed(() => {
 
 const isSent = computed(() => {
   if (!showStatusIndicator.value) return false;
+  if (
+    contentAttributes.value?.fluxFallbackOriginMessageId &&
+    sourceId.value?.startsWith('flux-fallback-reserved-')
+  ) {
+    return false;
+  }
 
   // Messages will be marked as sent for the Email channel if they have a source ID.
   if (isAnEmailChannel.value) return !!sourceId.value;
@@ -137,7 +143,15 @@ const statusToShow = computed(() => {
       <time class="inline">{{ readableTime }}</time>
     </div>
     <Icon v-if="isPrivate" icon="i-lucide-lock-keyhole" class="size-3" />
-    <MessageStatus v-if="showStatusIndicator" :status="statusToShow" />
+    <MessageStatus
+      v-if="showStatusIndicator"
+      :status="statusToShow"
+      :sent-tooltip="
+        contentAttributes.fluxPartnerId
+          ? $t('CONVERSATION.FLUX_SENT_PENDING')
+          : ''
+      "
+    />
   </div>
 </template>
 `

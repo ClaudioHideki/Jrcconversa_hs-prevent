@@ -83,9 +83,9 @@ class Sms::Providers::FluxService
     body[:client] = @channel.provider_config['client'] if @channel.provider_config['client'].present?
     response = HTTParty.post(
       "#{API_BASE}/envio", headers: { 'Content-Type' => 'application/json', 'account' => secrets.fetch('account'), 'code' => secrets.fetch('code') },
-      body: body.to_json, timeout: 20, follow_redirects: false
+      body: { mensagens: [body] }.to_json, timeout: 20, follow_redirects: false
     )
-    raise Error, 'Flux: API indisponivel.' unless response.success?
+    raise Error, 'Flux: API indisponivel.' unless response.code.to_i == 200
 
     parse_send_response(response.body, partner_id)
   rescue *network_errors
@@ -100,7 +100,8 @@ class Sms::Providers::FluxService
     if value.is_a?(Hash)
       code = value['codigo'].to_s
       raise Error, error_message(code) if code.present? && code != '000'
-      return (value['id_mensagem'].presence || value['id'].presence || partner_id).to_s if code == '000' || value['id_mensagem'] || value['id']
+      provider_id = value['id_mensagem'].presence || value['id'].presence
+      return (provider_id || partner_id).to_s if code == '000' || provider_id
     end
     parse_plain_response(value.to_s, partner_id)
   rescue JSON::ParserError

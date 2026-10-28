@@ -15,6 +15,9 @@ Credenciais e token são criptografados com AES-256-GCM usando uma chave derivad
 ## API e callback
 
 - Envio: `POST https://apisms.fluxtelecom.com.br/envio`, com `account` e `code` nos headers.
+- Formato confirmado pelo suporte Flux em 28/10/2026: `{ "mensagens": [ { "to": "55DDDNUMERO", "tipoEnvio": "2", "msg": "texto", "id": "JRC-SMS-12345" } ] }`. Cada chamada do JRC contém somente uma mensagem. `client`, `urlCallback` e `tokenCallback` seguem dentro desse item.
+- O suporte confirmou a mesma URL `/envio` para esse envelope, com HTTP 200 como resposta esperada. Erros de aplicação no corpo continuam sendo rejeitados; HTTP 200 e aceitação da solicitação não confirmam entrega no celular. O status enviado mostra que está aguardando a confirmação Flux.
+- Para a conta tratada com o suporte, foi orientado `tipoEnvio=2`. Selecione essa modalidade na caixa correspondente. As configurações existentes e a modalidade de outras contas não são alteradas automaticamente.
 - Correlação: `JRC-SMS-<message_id>`; o identificador retornado pela Flux fica associado à mensagem.
 - Callback automático: `https://<host>/f?t=<token-gerado>`. O formato curto cabe nos 50 caracteres documentados para o host JRC informado. Verifique esse limite se alterar o domínio da instalação.
 - O token também segue em `tokenCallback`. O endpoint longo `/api/integrations/flux/callback` aceita o mesmo token pelo parâmetro `t`, parâmetro `tokenCallback` ou header `tokenCallback`.
@@ -67,10 +70,10 @@ Esta funcionalidade usa os campos JSON existentes; não adiciona migration.
 Imagem da atualização de reserva:
 
 ```yaml
-image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-fallback-20261028
+image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-json-20261028
 ```
 
-A imagem anterior `4.16.2-jrc-sms-flux-20261027` permanece preservada.
+As imagens anteriores `4.16.2-jrc-sms-flux-20261027` e `4.16.2-jrc-flux-fallback-20261028` permanecem preservadas.
 
 Build convencional a partir deste código:
 

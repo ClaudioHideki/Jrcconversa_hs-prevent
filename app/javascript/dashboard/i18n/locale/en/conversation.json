@@ -1,5 +1,6 @@
 {
   "CONVERSATION": {
+    "FLUX_SENT_PENDING": "Solicitação enviada à Flux; aguardando confirmação de entrega.",
     "FLUX_FALLBACK": {
       "WAITING": "Flux backup SMS: waiting for Twilio delivery",
       "SENDING": "Flux backup SMS: attempt started",

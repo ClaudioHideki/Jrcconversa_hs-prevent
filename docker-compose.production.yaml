@@ -2,7 +2,7 @@ version: '3'
 
 services:
   base: &base
-    image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-fallback-20261028
+    image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-json-20261028
     env_file: .env ## Change this file for customized env variables
     volumes:
       - storage_data:/app/storage
