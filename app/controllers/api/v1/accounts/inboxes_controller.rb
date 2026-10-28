@@ -133,7 +133,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   end
 
   def reauthorize_and_update_channel(channel_attributes)
-    @inbox.channel.update!(permitted_params(channel_attributes)[:channel])
+    @inbox.channel.update!(permitted_params(channel_attributes)[:channel].except(:type))
     @inbox.channel.reauthorized! if @inbox.channel.respond_to?(:reauthorized!)
   end
 

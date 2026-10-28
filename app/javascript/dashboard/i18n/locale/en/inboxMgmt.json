@@ -270,6 +270,7 @@
           "SAVE": "Salvar configuração",
           "TEST_SUCCESS": "Consulta autenticada com sucesso. A liberação do IP para envio deve ser confirmada na Flux.",
           "ERROR": "Não foi possível concluir. Verifique as credenciais e a liberação do IP na Flux.",
+          "SAVE_ERROR": "Não foi possível confirmar o salvamento da configuração Flux. Reabra a caixa e confira os dados salvos.",
           "SAVED": "Configuração Flux salva com sucesso."
         }
       },

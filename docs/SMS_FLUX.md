@@ -70,10 +70,16 @@ Esta funcionalidade usa os campos JSON existentes; não adiciona migration.
 Imagem da atualização de reserva:
 
 ```yaml
-image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-json-20261028
+image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-save-20261028
 ```
 
-As imagens anteriores `4.16.2-jrc-sms-flux-20261027` e `4.16.2-jrc-flux-fallback-20261028` permanecem preservadas.
+As imagens anteriores `4.16.2-jrc-sms-flux-20261027`, `4.16.2-jrc-flux-fallback-20261028` e `4.16.2-jrc-flux-json-20261028` permanecem preservadas.
+
+Essa versão também corrige o salvamento da caixa Flux: o campo de criação
+`channel.type` não é enviado ao editar, e o backend o ignora em PATCH de canais
+existentes. Isso evita `UnknownAttributeError: type for Channel::Sms` em telas
+antigas ainda abertas. Erros de salvamento passam a mostrar o motivo real
+retornado pelo servidor, em vez de atribuir a falha genericamente a senha/IP.
 
 Build convencional a partir deste código:
 

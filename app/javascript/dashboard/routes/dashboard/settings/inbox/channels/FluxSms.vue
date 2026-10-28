@@ -20,6 +20,7 @@ const busy = ref(false);
 const testing = ref(false);
 const testResult = ref('');
 const testFailed = ref(false);
+const saveError = ref('');
 const configured = computed(() => props.inbox?.provider_config?.configured);
 const valid = computed(
   () =>
@@ -57,10 +58,10 @@ async function testConnection() {
 async function save() {
   if (!valid.value) return;
   busy.value = true;
+  saveError.value = '';
   try {
     const channel = {
-      type: 'sms',
-      ...(!props.inbox ? { provider: 'flux' } : {}),
+      ...(!props.inbox ? { type: 'sms', provider: 'flux' } : {}),
       ...credentials(),
       provider_config: {
         send_type: sendType.value,
@@ -88,9 +89,12 @@ async function save() {
       });
     }
   } catch (error) {
-    useAlert(
-      error.response?.data?.message || t('INBOX_MGMT.ADD.SMS.FLUX.ERROR')
-    );
+    saveError.value =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      t('INBOX_MGMT.ADD.SMS.FLUX.SAVE_ERROR');
+    useAlert(saveError.value);
   } finally {
     busy.value = false;
   }
@@ -173,6 +177,9 @@ async function save() {
       :class="testFailed ? 'text-n-ruby-11' : 'text-n-teal-11'"
     >
       {{ testResult }}
+    </p>
+    <p v-if="saveError" role="alert" class="text-sm text-n-ruby-11">
+      {{ saveError }}
     </p>
     <div class="mt-4 flex flex-wrap gap-3">
       <NextButton
