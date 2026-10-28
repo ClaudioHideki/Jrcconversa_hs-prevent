@@ -15,8 +15,11 @@ Credenciais e token são criptografados com AES-256-GCM usando uma chave derivad
 ## API e callback
 
 - Envio: `POST https://apisms.fluxtelecom.com.br/envio`, com `account` e `code` nos headers.
-- Formato confirmado pelo suporte Flux em 28/10/2026: `{ "mensagens": [ { "to": "55DDDNUMERO", "tipoEnvio": "2", "msg": "texto", "id": "JRC-SMS-12345" } ] }`. Cada chamada do JRC contém somente uma mensagem. `client`, `urlCallback` e `tokenCallback` seguem dentro desse item.
-- O suporte confirmou a mesma URL `/envio` para esse envelope, com HTTP 200 como resposta esperada. Erros de aplicação no corpo continuam sendo rejeitados; HTTP 200 e aceitação da solicitação não confirmam entrega no celular. O status enviado mostra que está aguardando a confirmação Flux.
+- O suporte confirmou em 28/10/2026 que esse POST não exige `type` no header nem no body. A autenticação usa somente `account` e `code`; `Content-Type: application/json` identifica o formato do corpo. O código atual já segue esse contrato.
+- `tipoEnvio` continua obrigatório dentro da mensagem e não é o parâmetro `type`. O `type=C` utilizado pelo teste de conexão pertence à consulta de mensagens em `/integracao3.do`, separada do POST de envio.
+- Formato de envio simples da página 24 do manual: `{ "to": "55DDDNUMERO", "tipoEnvio": "2", "msg": "texto", "id": "JRC-SMS-12345" }`. Cada chamada do JRC contém somente uma mensagem, diretamente na raiz do JSON. `client`, `urlCallback` e `tokenCallback` também seguem na raiz.
+- O envelope `mensagens`, anteriormente orientado pelo suporte, foi recusado em um teste no laboratório em 28/10/2026: HTTP 200, `Content-Type: text/html;charset=UTF-8`, corpo `PARAMETRO to NO JSON EH OBRIGATORIO E NAO PODE TER VALOR NULL OU VAZIO`. O campo `to` estava presente dentro do envelope. Por isso, o envio foi corrigido para o objeto simples documentado; a aceitação real desse formato ainda precisa ser confirmada no servidor.
+- A resposta esperada usa HTTP 200. Erros de aplicação no corpo continuam sendo rejeitados; HTTP 200 e aceitação da solicitação não confirmam entrega no celular. O status enviado mostra que está aguardando a confirmação Flux. A página 25 descreve o retorno do código da mensagem ou do ID informado; o parser aceita esses identificadores, mas não trata qualquer HTTP 200 como sucesso.
 - Para a conta tratada com o suporte, foi orientado `tipoEnvio=2`. Selecione essa modalidade na caixa correspondente. As configurações existentes e a modalidade de outras contas não são alteradas automaticamente.
 - Correlação: `JRC-SMS-<message_id>`; o identificador retornado pela Flux fica associado à mensagem.
 - Callback automático: `https://<host>/f?t=<token-gerado>`. O formato curto cabe nos 50 caracteres documentados para o host JRC informado. Verifique esse limite se alterar o domínio da instalação.
@@ -70,10 +73,10 @@ Esta funcionalidade usa os campos JSON existentes; não adiciona migration.
 Imagem da atualização de reserva:
 
 ```yaml
-image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-save-20261028
+image: ghcr.io/claudiohideki/jrcconversa_hs-prevent:4.16.2-jrc-flux-direct-20261028
 ```
 
-As imagens anteriores `4.16.2-jrc-sms-flux-20261027`, `4.16.2-jrc-flux-fallback-20261028` e `4.16.2-jrc-flux-json-20261028` permanecem preservadas.
+As imagens anteriores `4.16.2-jrc-sms-flux-20261027`, `4.16.2-jrc-flux-fallback-20261028`, `4.16.2-jrc-flux-json-20261028` e `4.16.2-jrc-flux-save-20261028` permanecem preservadas.
 
 Essa versão também corrige o salvamento da caixa Flux: o campo de criação
 `channel.type` não é enviado ao editar, e o backend o ignora em PATCH de canais

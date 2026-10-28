@@ -83,7 +83,7 @@ class Sms::Providers::FluxService
     body[:client] = @channel.provider_config['client'] if @channel.provider_config['client'].present?
     response = HTTParty.post(
       "#{API_BASE}/envio", headers: { 'Content-Type' => 'application/json', 'account' => secrets.fetch('account'), 'code' => secrets.fetch('code') },
-      body: { mensagens: [body] }.to_json, timeout: 20, follow_redirects: false
+      body: body.to_json, timeout: 20, follow_redirects: false
     )
     raise Error, 'Flux: API indisponivel.' unless response.code.to_i == 200
 
