@@ -17,7 +17,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: claudiohideki/jrcconversa_hs-prevent
-  IMAGE_TAG: 4.16.2-jrc-flux-mo-20261028
+  IMAGE_TAG: 4.16.2-jrc-flux-mo-multiline-20261030
 
 jobs:
   build-and-push:

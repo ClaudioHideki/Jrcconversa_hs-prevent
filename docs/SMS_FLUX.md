@@ -154,3 +154,21 @@ sem duplicações. A confirmação de entrega por callback continua uma validaç
 separada; consultar MO não substitui o comprovante de entrega da operadora.
 
 Base do contrato: manual Flux WebService e HTTP v2.7.2, envio JSON e callback; especificação técnica JRC fornecida para esta implementação.
+
+## Respostas MO com quebras de linha (30/10/2026)
+
+O diagnóstico somente de leitura no HS encontrou 39 registros de nove campos:
+21 sem quebras de linha e 18 com três quebras internas, sem aspas. Ler esse
+retorno como CSV por linha produzia 57 fragmentos e rejeitava o lote inteiro.
+O parser passa a reconhecer o início de cada registro pelo ID e telefone após
+`|` ou quebra de linha. Nos registros sem aspas, separa apenas os nove campos
+por ponto e vírgula, preservando as quebras internas. O formato CSV com campos
+entre aspas continua suportado. Registros estruturalmente inválidos ainda
+interrompem a importação; não são descartados silenciosamente.
+
+A mudança não envia SMS, não altera a URL/token do callback e não muda a
+correlação ou deduplicação das respostas. Web e worker precisam usar a mesma
+imagem. A consulta automática continua limitada a hoje e ontem; respostas
+mais antigas exigem recuperação controlada e autorizada, sem reenvio de SMS.
+A imagem anterior `4.16.2-jrc-flux-mo-20261028` permanece como referência de
+rollback. Nenhum deploy ou importação em produção é executado por esta mudança.
