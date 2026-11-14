@@ -213,6 +213,180 @@ describe('conversation loading and request races', () => {
     expect(chat.messageLoadError).toBe(false);
   });
 
+  it.each([
+    ['anchor', 'B', 'A'],
+    ['B', 'A', 'anchor'],
+    ['A', 'anchor', 'B'],
+  ])(
+    'loads A -> B -> A with a message anchor in order %s / %s / %s',
+    async (...order) => {
+      const responses = {};
+      state.allConversations[0].messages[0].created_at = 11;
+      state.allConversations[1].messages[0].created_at = 22;
+      MessageApi.getPreviousMessages.mockImplementation(
+        ({ conversationId, after }) =>
+          new Promise(resolve => {
+            const name = conversationId === 1 ? 'A' : 'B';
+            responses[after ? 'anchor' : name] = resolve;
+          })
+      );
+      const firstA = store.dispatch('setActiveChat', {
+        data: state.allConversations[0],
+      });
+      const requestB = store.dispatch('setActiveChat', {
+        data: state.allConversations[1],
+      });
+      let anchorCompleted = false;
+      const anchoredA = store
+        .dispatch('setActiveChat', {
+          data: state.allConversations[0],
+          after: 5,
+        })
+        .then(() => {
+          anchorCompleted = true;
+        });
+      expect(MessageApi.getPreviousMessages).toHaveBeenCalledTimes(3);
+      expect(MessageApi.getPreviousMessages).toHaveBeenLastCalledWith({
+        conversationId: 1,
+        before: 11,
+        after: 5,
+      });
+      await Promise.resolve();
+      expect(anchorCompleted).toBe(false);
+      const requests = { A: firstA, B: requestB, anchor: anchoredA };
+      const payloads = {
+        A: [{ id: 10, created_at: 10, content: 'older A' }],
+        B: [{ id: 21, created_at: 21, content: 'older B' }],
+        anchor: [
+          { id: 5, created_at: 5, content: 'target A' },
+          { id: 10, created_at: 10, content: 'overlapping A' },
+        ],
+      };
+      await order.reduce(async (previous, name) => {
+        await previous;
+        responses[name]({ data: { payload: payloads[name], meta: {} } });
+        await requests[name];
+        expect(state.selectedChatId).toBe(1);
+        if (name === 'anchor') {
+          expect(
+            state.allConversations[0].messages.some(message => message.id === 5)
+          ).toBe(true);
+        }
+      }, Promise.resolve());
+      expect(
+        state.allConversations[0].messages.map(message => message.id)
+      ).toEqual([5, 10, 11]);
+      expect(
+        state.allConversations[1].messages.map(message => message.id)
+      ).toEqual([21, 22]);
+      expect(state.allConversations[0].isFetchingMessages).toBe(false);
+      expect(state.allConversations[1].isFetchingMessages).toBe(false);
+      expect(state.allConversations[0].messageLoadError).toBe(false);
+    }
+  );
+
+  it('shares identical pending ranges and keeps loading until both ranges settle', async () => {
+    let resolveFirst;
+    let resolveAnchor;
+    MessageApi.getPreviousMessages.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveFirst = resolve;
+      })
+    );
+    const data = { conversationId: 1, before: 11 };
+    const first = store.dispatch('fetchPreviousMessages', data);
+    const sameRange = store.dispatch('fetchPreviousMessages', { ...data });
+    expect(MessageApi.getPreviousMessages).toHaveBeenCalledTimes(1);
+    MessageApi.getPreviousMessages.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveAnchor = resolve;
+      })
+    );
+    const anchor = store.dispatch('fetchPreviousMessages', {
+      ...data,
+      after: 5,
+    });
+    resolveAnchor({ data: { payload: [{ id: 5 }], meta: {} } });
+    expect(await anchor).toBe(true);
+    expect(state.allConversations[0].isFetchingMessages).toBe(true);
+    resolveFirst({ data: { payload: [{ id: 10 }], meta: {} } });
+    expect(await first).toBe(true);
+    expect(await sameRange).toBe(true);
+    expect(state.allConversations[0].isFetchingMessages).toBe(false);
+  });
+
+  it('does not reuse a pending range after the account or inbox context changes', async () => {
+    let resolveOld;
+    let resolveNew;
+    MessageApi.getPreviousMessages.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveOld = resolve;
+      })
+    );
+    const old = store.dispatch('fetchPreviousMessages', {
+      conversationId: 1,
+      before: 11,
+      after: 5,
+    });
+    await store.dispatch('emptyAllConversations');
+    state.allConversations = [{ id: 1, messages: [{ id: 99 }], meta: {} }];
+    MessageApi.getPreviousMessages.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveNew = resolve;
+      })
+    );
+    const current = store.dispatch('fetchPreviousMessages', {
+      conversationId: 1,
+      before: 11,
+      after: 5,
+    });
+    expect(MessageApi.getPreviousMessages).toHaveBeenCalledTimes(2);
+    resolveOld({
+      data: { payload: [{ id: 5, content: 'old account' }], meta: {} },
+    });
+    expect(await old).toBe(false);
+    expect(state.allConversations[0].isFetchingMessages).toBe(true);
+    expect(state.allConversations[0].messages).toEqual([{ id: 99 }]);
+    resolveNew({
+      data: { payload: [{ id: 6, content: 'new account' }], meta: {} },
+    });
+    expect(await current).toBe(true);
+    expect(
+      state.allConversations[0].messages.map(message => message.id)
+    ).toEqual([6, 99]);
+    expect(state.allConversations[0].isFetchingMessages).toBe(false);
+  });
+
+  it('preserves history and retries a failed anchor while another range remains pending', async () => {
+    let resolveFirst;
+    MessageApi.getPreviousMessages.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveFirst = resolve;
+      })
+    );
+    const first = store.dispatch('fetchPreviousMessages', {
+      conversationId: 1,
+      before: 11,
+    });
+    const anchor = { conversationId: 1, before: 11, after: 5 };
+    MessageApi.getPreviousMessages.mockRejectedValueOnce(new Error('offline'));
+    expect(await store.dispatch('fetchPreviousMessages', anchor)).toBe(false);
+    expect(state.allConversations[0].isFetchingMessages).toBe(true);
+    expect(state.allConversations[0].messageLoadError).toBe(true);
+    expect(state.allConversations[0].messages[0].content).toBe('history A');
+    MessageApi.getPreviousMessages.mockResolvedValueOnce({
+      data: { payload: [{ id: 5 }], meta: {} },
+    });
+    expect(await store.dispatch('fetchPreviousMessages', anchor)).toBe(true);
+    resolveFirst({ data: { payload: [], meta: {} } });
+    await first;
+    expect(state.allConversations[0].messageLoadError).toBe(false);
+    expect(state.allConversations[0].isFetchingMessages).toBe(false);
+    expect(
+      state.allConversations[0].messages.map(message => message.id)
+    ).toEqual([5, 11]);
+  });
+
   it('loads a conversation with no cached messages', async () => {
     const chat = state.allConversations[0];
     chat.messages = [];

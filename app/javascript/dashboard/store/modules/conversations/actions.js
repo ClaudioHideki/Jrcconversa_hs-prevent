@@ -19,6 +19,9 @@ import {
   syncConversationCallVisibility,
 } from 'dashboard/helper/voice';
 
+// Keep in-flight promises outside serializable Vuex state, scoped to each store.
+const messageRequests = new WeakMap();
+
 export const hasMessageFailedWithExternalError = pendingMessage => {
   // This helper is used to check if the message has failed with an external error.
   // We have two cases
@@ -102,45 +105,61 @@ const actions = {
 
   fetchPreviousMessages: async ({ commit, state }, data) => {
     const contextVersion = state.conversationContextVersion;
-    const chat = state.allConversations.find(
-      item => item.id === data.conversationId
-    );
-    if (chat?.isFetchingMessages) return false;
+    if (!messageRequests.has(state)) messageRequests.set(state, new Map());
+    const requests = messageRequests.get(state);
+    const key = JSON.stringify([
+      contextVersion,
+      data.conversationId,
+      data.before ?? null,
+      data.after ?? null,
+    ]);
+    if (requests.has(key)) return requests.get(key).promise;
+    const request = { contextVersion, conversationId: data.conversationId };
+    requests.set(key, request);
     commit(types.SET_CONVERSATION_MESSAGE_LOADING, {
       id: data.conversationId,
       loading: true,
       error: false,
     });
-    let failed = false;
-    try {
-      const {
-        data: { meta, payload },
-      } = await MessageApi.getPreviousMessages(data);
-      if (state.conversationContextVersion !== contextVersion) return false;
-      commit(`conversationMetadata/${types.SET_CONVERSATION_METADATA}`, {
-        id: data.conversationId,
-        data: meta,
-      });
-      commit(types.SET_PREVIOUS_CONVERSATIONS, {
-        id: data.conversationId,
-        data: payload,
-      });
-      if (!payload.length) {
-        commit(types.SET_ALL_MESSAGES_LOADED, data.conversationId);
-      }
-      return true;
-    } catch (error) {
-      failed = true;
-      return false;
-    } finally {
-      if (state.conversationContextVersion === contextVersion) {
-        commit(types.SET_CONVERSATION_MESSAGE_LOADING, {
+    request.promise = (async () => {
+      let failed = false;
+      try {
+        const {
+          data: { meta, payload },
+        } = await MessageApi.getPreviousMessages(data);
+        if (state.conversationContextVersion !== contextVersion) return false;
+        commit(`conversationMetadata/${types.SET_CONVERSATION_METADATA}`, {
           id: data.conversationId,
-          loading: false,
-          error: failed,
+          data: meta,
         });
+        commit(types.SET_PREVIOUS_CONVERSATIONS, {
+          id: data.conversationId,
+          data: payload,
+        });
+        if (!payload.length) {
+          commit(types.SET_ALL_MESSAGES_LOADED, data.conversationId);
+        }
+        return true;
+      } catch (error) {
+        failed = true;
+        return false;
+      } finally {
+        requests.delete(key);
+        if (state.conversationContextVersion === contextVersion) {
+          const loading = [...requests.values()].some(
+            pending =>
+              pending.contextVersion === contextVersion &&
+              pending.conversationId === data.conversationId
+          );
+          commit(types.SET_CONVERSATION_MESSAGE_LOADING, {
+            id: data.conversationId,
+            loading,
+            error: failed,
+          });
+        }
       }
-    }
+    })();
+    return request.promise;
   },
 
   fetchAllAttachments: async ({ commit }, conversationId) => {

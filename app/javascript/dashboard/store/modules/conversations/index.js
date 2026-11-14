@@ -90,7 +90,13 @@ export const mutations = {
   [types.SET_PREVIOUS_CONVERSATIONS](_state, { id, data }) {
     if (data.length) {
       const [chat] = _state.allConversations.filter(c => c.id === id);
-      if (chat) chat.messages.unshift(...data);
+      if (chat) {
+        const existingIds = new Set(chat.messages.map(message => message.id));
+        chat.messages.unshift(
+          ...data.filter(message => !existingIds.has(message.id))
+        );
+        chat.messages.sort((a, b) => a.created_at - b.created_at);
+      }
     }
   },
   [types.SET_ALL_ATTACHMENTS](_state, { id, data }) {
