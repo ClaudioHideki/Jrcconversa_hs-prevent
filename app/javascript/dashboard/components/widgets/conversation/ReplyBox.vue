@@ -16,6 +16,7 @@ import ArticleSearchPopover from 'dashboard/routes/dashboard/helpcenter/componen
 import CopilotEditorSection from './CopilotEditorSection.vue';
 import MessageSignatureMissingAlert from './MessageSignatureMissingAlert.vue';
 import ReplyBoxBanner from './ReplyBoxBanner.vue';
+import FluxSmsCounter from './FluxSmsCounter.vue';
 import QuotedEmailPreview from './QuotedEmailPreview.vue';
 import { REPLY_EDITOR_MODES } from 'dashboard/components/widgets/WootWriter/constants';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
@@ -69,6 +70,7 @@ export default {
     AttachmentPreview,
     AudioRecorder,
     ReplyBoxBanner,
+    FluxSmsCounter,
     EmojiIconPicker,
     MessageSignatureMissingAlert,
     ReplyBottomPanel,
@@ -137,6 +139,8 @@ export default {
       showArticleSearchPopover: false,
       hasRecordedAudio: false,
       copilotAcceptedMessages: {},
+      fluxSmsValidation: null,
+      sendingDrafts: {},
     };
   },
   computed: {
@@ -224,14 +228,45 @@ export default {
         : this.$t('CONVERSATION.FOOTER.MSG_INPUT');
     },
     isMessageLengthReachingThreshold() {
+      if (this.isFluxSmsReply) return false;
       return this.message.length > this.maxLength - 50;
+    },
+    isFluxSmsReply() {
+      return (
+        !this.isPrivate &&
+        this.inbox?.channel_type === 'Channel::Sms' &&
+        this.inbox?.provider === 'flux'
+      );
+    },
+    fluxSmsLength() {
+      return this.isFluxSmsValidated ? this.fluxSmsValidation.length : null;
+    },
+    isFluxSmsValidated() {
+      const result = this.fluxSmsValidation;
+      return (
+        result?.status === 'ready' &&
+        result.content === this.message &&
+        result.conversationId === this.conversationId &&
+        result.accountId === this.accountId
+      );
+    },
+    isSendingCurrentDraft() {
+      return !!this.sendingDrafts[this.getDraftKey()];
     },
     charactersRemaining() {
       return this.maxLength - this.message.length;
     },
     isReplyButtonDisabled() {
+      if (this.isSendingCurrentDraft) return true;
       if (this.isEditorDisabled) return true;
       if (this.isATwitterInbox) return true;
+      if (this.isFluxSmsReply) {
+        return (
+          this.isMessageEmpty ||
+          !this.isFluxSmsValidated ||
+          !this.fluxSmsValidation.valid
+        );
+      }
       if (this.hasAttachments || this.hasRecordedAudio) return false;
 
       return (
@@ -254,6 +289,9 @@ export default {
     maxLength() {
       if (this.isPrivate) {
         return MESSAGE_MAX_LENGTH.GENERAL;
+      }
+      if (this.isFluxSmsReply) {
+        return this.inbox.sms_character_limit;
       }
       if (this.isAFacebookInbox) {
         return MESSAGE_MAX_LENGTH.FACEBOOK;
@@ -309,6 +347,8 @@ export default {
       let sendMessageText = this.$t('CONVERSATION.REPLYBOX.SEND');
       if (this.isPrivate) {
         sendMessageText = this.$t('CONVERSATION.REPLYBOX.CREATE');
+      } else if (this.isFluxSmsReply) {
+        sendMessageText = this.$t('CONVERSATION.FLUX_SMS_LIMIT.SEND');
       }
       const keyLabel = this.isEditorHotKeyEnabled('cmd_enter')
         ? `(${this.shortcutKey})`
@@ -547,6 +587,15 @@ export default {
     emitter.off(CMD_AI_ASSIST, this.executeCopilotAction);
   },
   methods: {
+    onFluxSmsValidation(result) {
+      if (
+        result.content === this.message &&
+        result.conversationId === this.conversationId &&
+        result.accountId === this.accountId
+      ) {
+        this.fluxSmsValidation = result;
+      }
+    },
     getDraftKey(
       conversationId = this.conversationIdByRoute,
       replyType = this.replyType
@@ -619,7 +668,9 @@ export default {
     saveDraft(conversationId, replyType) {
       if (this.message || this.message === '') {
         const key = this.getDraftKey(conversationId, replyType);
-        const draftToSave = trimContent(this.message || '', this.maxLength);
+        const draftToSave = this.isFluxSmsReply
+          ? this.message || ''
+          : trimContent(this.message || '', this.maxLength);
 
         this.$store.dispatch('draftMessages/set', {
           key,
@@ -661,9 +712,8 @@ export default {
         ? appendSignature(message, this.messageSignature, effectiveChannelType)
         : removeSignature(message, this.messageSignature, effectiveChannelType);
     },
-    removeFromDraft() {
-      if (this.conversationIdByRoute) {
-        const key = this.getDraftKey();
+    removeFromDraft(key = this.getDraftKey()) {
+      if (key) {
         this.$store.dispatch('draftMessages/delete', { key });
       }
     },
@@ -773,11 +823,22 @@ export default {
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
     },
-    confirmOnSendReply() {
+    async confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
         return;
       }
       if (!this.showMentions) {
+        const snapshot = {
+          message: this.message,
+          files: [...this.attachedFiles],
+          key: this.getDraftKey(),
+          conversationId: this.conversationId,
+          replyType: this.replyType,
+          ccEmails: this.ccEmails,
+          bccEmails: this.bccEmails,
+          toEmails: this.toEmails,
+        };
+        this.sendingDrafts[snapshot.key] = true;
         const copilotAcceptedMessage = this.getCopilotAcceptedMessage();
         const isOnWhatsApp =
           this.isATwilioWhatsAppChannel ||
@@ -789,37 +850,81 @@ export default {
         // To handle both cases, text and attachments are always sent as separate messages.
         const isOnInstagram = this.isAnInstagramChannel;
         const isOnTiktok = this.isATiktokChannel;
-        if ((isOnWhatsApp || isOnInstagram || isOnTiktok) && !this.isPrivate) {
-          this.sendMessageAsMultipleMessages(
-            this.message,
-            copilotAcceptedMessage
+        try {
+          const payloads =
+            (isOnWhatsApp || isOnInstagram || isOnTiktok) && !this.isPrivate
+              ? this.getMultipleMessagesPayload(snapshot.message)
+              : [this.getMessagePayload(snapshot.message)];
+          const results = await Promise.all(
+            payloads.map(payload =>
+              this.sendMessage(
+                payload,
+                snapshot.message,
+                copilotAcceptedMessage
+              )
+            )
           );
-        } else {
-          const messagePayload = this.getMessagePayload(this.message);
-          this.sendMessage(
-            messagePayload,
-            this.message,
-            copilotAcceptedMessage
-          );
+          this.finishSubmission(snapshot, payloads, results);
+        } finally {
+          delete this.sendingDrafts[snapshot.key];
         }
-
-        if (!this.isPrivate) {
-          this.clearEmailField();
-        }
-
-        this.clearMessage();
-        this.hideEmojiPicker();
       }
     },
-    sendMessageAsMultipleMessages(message, copilotAcceptedMessage = '') {
-      const messages = this.getMultipleMessagesPayload(message);
-      messages.forEach(messagePayload => {
-        this.sendMessage(
-          messagePayload,
-          messagePayload.message || '',
-          copilotAcceptedMessage
-        );
-      });
+    finishSubmission(snapshot, payloads, results) {
+      const allSent = results.every(Boolean);
+      const textSent = payloads.some(
+        (payload, index) => payload.message && results[index]
+      );
+      const textFailed = payloads.some(
+        (payload, index) => payload.message && !results[index]
+      );
+      if (this.getDraftKey() !== snapshot.key) {
+        if (
+          (allSent || (textSent && !textFailed)) &&
+          this.$store.getters['draftMessages/get'](snapshot.key) ===
+            snapshot.message
+        ) {
+          this.removeFromDraft(snapshot.key);
+        }
+        return;
+      }
+      const unchanged =
+        this.message === snapshot.message &&
+        this.attachedFiles.length === snapshot.files.length &&
+        this.attachedFiles.every(
+          (file, index) => file === snapshot.files[index]
+        ) &&
+        this.ccEmails === snapshot.ccEmails &&
+        this.bccEmails === snapshot.bccEmails &&
+        this.toEmails === snapshot.toEmails;
+      if (allSent && unchanged) {
+        if (!this.isPrivate) this.clearEmailField();
+        this.clearMessage();
+        this.removeFromDraft(snapshot.key);
+        this.hideEmojiPicker();
+        return;
+      }
+      // Keep failed pieces and edits made while sending. Accepted attachments
+      // and text are removed so a partial retry cannot send them a second time.
+      const sentFiles = payloads.flatMap((payload, index) =>
+        results[index] ? payload.files || [] : []
+      );
+      this.attachedFiles = this.attachedFiles.filter(
+        file =>
+          !sentFiles.includes(
+            this.globalConfig.directUploadsEnabled
+              ? file.blobSignedId
+              : file.resource.file
+          )
+      );
+      if (textSent && !textFailed && this.message === snapshot.message) {
+        this.message = this.toggleSignatureForDraft('');
+        this.clearCopilotAcceptedMessage(snapshot.replyType);
+      }
+      this.saveDraft(snapshot.conversationId, snapshot.replyType);
+      if (!allSent && this.isFluxSmsReply) {
+        this.$refs.fluxSmsCounter?.refresh();
+      }
     },
     sendMessageAnalyticsData(
       isPrivate,
@@ -885,11 +990,12 @@ export default {
 
         const ok = await this.$refs.confirmDialog.showConfirmation();
         if (ok) {
-          this.confirmOnSendReply();
+          return this.confirmOnSendReply();
         }
       } else {
-        this.confirmOnSendReply();
+        return this.confirmOnSendReply();
       }
+      return undefined;
     },
     async sendMessage(
       messagePayload,
@@ -901,17 +1007,20 @@ export default {
           'createPendingMessageAndSend',
           messagePayload
         );
-        emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
-        emitter.emit(BUS_EVENTS.MESSAGE_SENT);
-        this.removeFromDraft();
+        if (messagePayload.conversationId === this.conversationId) {
+          emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
+          emitter.emit(BUS_EVENTS.MESSAGE_SENT);
+        }
         this.sendMessageAnalyticsData(messagePayload.private, {
           editorMessage,
           copilotAcceptedMessage,
         });
+        return true;
       } catch (error) {
         const errorMessage =
           error?.response?.data?.error || this.$t('CONVERSATION.MESSAGE_ERROR');
         useAlert(errorMessage);
+        return false;
       }
     },
     async onSendWhatsAppReply(messagePayload) {
@@ -1277,6 +1386,16 @@ export default {
       :selected-portal-slug="connectedPortalSlug"
       @insert="handleInsert"
       @close="onSearchPopoverClose"
+    />
+    <FluxSmsCounter
+      v-if="isFluxSmsReply && !copilot.isActive.value"
+      ref="fluxSmsCounter"
+      :content="message"
+      :conversation-id="conversationId"
+      :account-id="accountId"
+      :variables="messageVariables"
+      :limit="maxLength"
+      @validation="onFluxSmsValidation"
     />
     <Transition
       mode="out-in"

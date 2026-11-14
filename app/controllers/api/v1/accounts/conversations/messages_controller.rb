@@ -5,6 +5,18 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     @messages = message_finder.perform
   end
 
+  def sms_preview
+    channel = @conversation.inbox.channel
+    return head :unprocessable_entity unless channel.is_a?(Channel::Sms) && channel.flux?
+
+    content = params.permit(:content).fetch(:content)
+    return head :bad_request unless content.is_a?(String) && content.length <= 150_000
+
+    render json: Sms::FluxMessagePreview.new(
+      conversation: @conversation, sender: Current.user || @resource, content: content
+    ).perform
+  end
+
   def create
     user = Current.user || @resource
     mb = Messages::MessageBuilder.new(user, @conversation, params)

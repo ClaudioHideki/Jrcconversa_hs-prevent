@@ -129,6 +129,9 @@ if resource.api?
 end
 
 json.provider resource.channel.try(:provider)
+if resource.channel_type == 'Channel::Sms' && resource.channel.flux?
+  json.sms_character_limit Sms::FluxMessageLength.limit_for(resource.channel)
+end
 if resource.channel_type == 'Channel::Sms' && resource.channel.flux? && Current.account_user&.administrator?
   json.provider_config resource.channel.flux_public_config
 end

@@ -1,5 +1,17 @@
 {
   "CONVERSATION": {
+    "MESSAGE_LOAD_ERROR": "Could not load messages.",
+    "FLUX_SMS_LIMIT": {
+      "CHECKING": "Checking SMS length…",
+      "CHECK_ERROR": "Could not check the SMS length. Try again before sending.",
+      "RETRY": "Try again",
+      "EXPANDED": "Count includes expanded variables.",
+      "EMPTY": "The message is empty after expanding variables. Review the text.",
+      "SEND": "Send SMS",
+      "REACHED": "Character limit reached.",
+      "EXCEEDED": "Message exceeds the {limit}-character limit. Shorten the text to send.",
+      "REMOVE": "Characters to remove: {count}."
+    },
     "FLUX_SENT_PENDING": "Solicitação enviada à Flux; aguardando confirmação de entrega.",
     "FLUX_FALLBACK": {
       "WAITING": "Flux backup SMS: waiting for Twilio delivery",

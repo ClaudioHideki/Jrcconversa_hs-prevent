@@ -115,6 +115,7 @@ pt_BR:
       search:
         query_missing: Especifique a string de busca com o parâmetro q
     messages:
+      flux_sms_too_long: 'Mensagem acima do limite de %{limit} caracteres. Reduza o texto para enviar. Caracteres que precisam ser removidos: %{excess}.'
       search:
         time_range_limit_exceeded: 'A pesquisa está limitada aos últimos %{days} dias'
     categories:

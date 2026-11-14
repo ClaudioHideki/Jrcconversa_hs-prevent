@@ -97,6 +97,7 @@ const allChatList = useMapGetter('getAllStatusChats');
 const unAssignedChatsList = useMapGetter('getUnAssignedChats');
 const participatingChatsList = useMapGetter('getParticipatingChats');
 const chatListLoading = useMapGetter('getChatListLoadingStatus');
+const chatListError = useMapGetter('getChatListErrorStatus');
 const activeInbox = useMapGetter('getSelectedInbox');
 const conversationStats = useMapGetter('conversationStats/getStats');
 const appliedFilters = useMapGetter('getAppliedConversationFiltersV2');
@@ -612,7 +613,19 @@ function onToggleAdvanceFiltersModal() {
 
 function fetchConversations() {
   store.dispatch('updateChatListFilters', conversationFilters.value);
-  store.dispatch('fetchAllConversations').then(emitConversationLoaded);
+  store.dispatch('fetchAllConversations').then(loaded => {
+    if (loaded) emitConversationLoaded();
+  });
+}
+
+function retryConversations() {
+  if (hasActiveFolders.value) {
+    fetchSavedFilteredConversations(activeFolder.value.query);
+  } else if (hasAppliedFilters.value) {
+    fetchFilteredConversations(appliedFilters.value);
+  } else {
+    fetchConversations();
+  }
 }
 
 function resetAndFetchData() {
@@ -907,7 +920,11 @@ watch(
   () => resetAndFetchData()
 );
 watch(
-  () => route.query,
+  [
+    () => route.query.status,
+    () => route.query.sort_by,
+    () => route.query.assignee_type,
+  ],
   () => {
     syncFiltersFromRouteQuery();
     resetAndFetchData();
@@ -940,6 +957,16 @@ watch(conversationFilters, (newVal, oldVal) => {
       isOnExpandedLayout ? 'basis-full' : 'w-[400px] 2xl:w-[430px]',
     ]"
   >
+    <div
+      v-if="chatListError"
+      class="px-4 py-2 text-sm text-n-ruby-11"
+      role="alert"
+    >
+      {{ t('CHAT_LIST.LOAD_ERROR') }}
+      <button class="ml-2 underline" type="button" @click="retryConversations">
+        {{ t('CHAT_LIST.RETRY') }}
+      </button>
+    </div>
     <slot />
     <ChatListHeader
       :page-title="pageTitle"

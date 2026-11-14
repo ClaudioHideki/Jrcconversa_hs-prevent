@@ -151,8 +151,10 @@ export default {
     },
     shouldShowSpinner() {
       return (
-        (this.currentChat && this.currentChat.dataFetched === undefined) ||
-        (!this.listLoadingStatus && this.isLoadingPrevious)
+        !this.currentChat.messageLoadError &&
+        (this.currentChat.isFetchingMessages ||
+          (this.currentChat && this.currentChat.dataFetched === undefined) ||
+          (!this.listLoadingStatus && this.isLoadingPrevious))
       );
     },
     // Check there is a instagram inbox exists with the same instagram_id
@@ -278,6 +280,17 @@ export default {
   },
 
   methods: {
+    async retryMessages() {
+      const chat = this.currentChat;
+      if (chat.dataFetched === undefined) {
+        await this.$store.dispatch('setActiveChat', { data: chat });
+      } else {
+        await this.$store.dispatch('fetchPreviousMessages', {
+          conversationId: chat.id,
+          before: chat.messages[0]?.id,
+        });
+      }
+    },
     async fetchSuggestions() {
       // start empty, this ensures that the label suggestions are not shown
       this.labelSuggestions = [];
@@ -484,7 +497,21 @@ export default {
           <li
             class="min-h-[4rem] flex flex-shrink-0 flex-grow-0 items-center flex-auto justify-center max-w-full mt-0 mr-0 mb-1 ml-0 relative first:mt-auto last:mb-0"
           >
-            <Spinner v-if="shouldShowSpinner" class="text-n-brand" />
+            <div
+              v-if="currentChat.messageLoadError"
+              class="px-4 py-2 text-sm text-n-ruby-11"
+              role="alert"
+            >
+              {{ $t('CONVERSATION.MESSAGE_LOAD_ERROR') }}
+              <button
+                type="button"
+                class="ml-2 underline"
+                @click="retryMessages"
+              >
+                {{ $t('CHAT_LIST.RETRY') }}
+              </button>
+            </div>
+            <Spinner v-else-if="shouldShowSpinner" class="text-n-brand" />
           </li>
         </transition>
       </template>

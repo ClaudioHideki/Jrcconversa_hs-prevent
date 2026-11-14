@@ -1,23 +1,26 @@
 name: Build JRC Conversas SMS Flux
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish this reviewed revision to GHCR
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
   packages: write
 
 concurrency:
-  group: image-${{ github.ref }}
+  group: jrc-conversas-registry-release
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: claudiohideki/jrcconversa_hs-prevent
-  IMAGE_TAG: 4.16.2-jrc-flux-mo-multiline-20261030
+  IMAGE_TAG: sha-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
   build-and-push:
@@ -27,6 +30,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Confirm the checked out revision
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Free runner space for the production image
         run: |
@@ -37,23 +48,24 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login GHCR
+        if: inputs.publish
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push
+      - name: Build the official image locally
         id: image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./docker/Dockerfile
           platforms: linux/amd64
-          push: true
+          push: false
+          load: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           build-args: |
             SOURCE_REVISION=${{ github.sha }}
           labels: |
@@ -64,10 +76,34 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-      - name: Record the published image
+      - name: Publish once without replacing an existing tag
+        if: inputs.publish
+        id: publish
         env:
-          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
         run: |
-          printf '### Imagem publicada\n\n' >> "$GITHUB_STEP_SUMMARY"
+          error_file="$(mktemp)"
+          if docker buildx imagetools inspect "$IMAGE_REF" > /dev/null 2> "$error_file"; then
+            echo "Refusing to overwrite existing tag: $IMAGE_REF" >&2
+            exit 1
+          elif [ "$(cat "$error_file")" != "ERROR: $IMAGE_REF: not found" ]; then
+            cat "$error_file" >&2
+            exit 1
+          fi
+          docker push "$IMAGE_REF"
+          digest="$(docker buildx imagetools inspect "$IMAGE_REF" --format '{{.Manifest.Digest}}')"
+          test -n "$digest"
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Record the build and publication status
+        env:
+          PUBLISHED: ${{ inputs.publish }}
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          printf '### Imagem JRC Conversas\n\n' >> "$GITHUB_STEP_SUMMARY"
           printf '`%s/%s:%s`\n\n' "$REGISTRY" "$IMAGE_NAME" "$IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
-          printf 'Digest: `%s`\n' "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Source: `%s`\n\nPublished: `%s`\n' "$SOURCE_SHA" "$PUBLISHED" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$PUBLISHED" = "true" ]; then
+            printf '\nCompose: `%s/%s@%s`\n' "$REGISTRY" "$IMAGE_NAME" "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -437,12 +437,17 @@ describe('#actions', () => {
       axios.post.mockResolvedValue({
         data: dataReceived,
       });
-      await actions.fetchFilteredConversations({ commit }, dataToSend);
-      expect(commit).toHaveBeenCalledTimes(2);
-      expect(commit.mock.calls).toEqual([
-        ['SET_LIST_LOADING_STATUS'],
-        ['SET_ALL_CONVERSATION', dataReceived.payload],
-      ]);
+      const loaded = await actions.fetchFilteredConversations(
+        { commit, dispatch, state: { listRequestId: 0 } },
+        dataToSend
+      );
+      expect(loaded).toBe(true);
+      expect(commit).toHaveBeenCalledWith(
+        types.SET_ALL_CONVERSATION,
+        dataReceived.payload
+      );
+      expect(commit).toHaveBeenCalledWith(types.CLEAR_LIST_LOADING_STATUS);
+      expect(commit).not.toHaveBeenCalledWith(types.SET_LIST_ERROR_STATUS);
     });
   });
 
@@ -725,7 +730,7 @@ describe('#addMentions', () => {
   describe('#setActiveChat', () => {
     it('should commit SET_CHAT_DATA_FETCHED with conversation ID after fetch', async () => {
       const localCommit = vi.fn();
-      const localDispatch = vi.fn().mockResolvedValue();
+      const localDispatch = vi.fn().mockResolvedValue(true);
       const data = { id: 42, messages: [{ id: 100 }] };
 
       await actions.setActiveChat(
@@ -764,7 +769,7 @@ describe('#addMentions', () => {
 
     it('should commit SET_CHAT_DATA_FETCHED by ID, not mutate the data object directly (race condition fix)', async () => {
       const localCommit = vi.fn();
-      const localDispatch = vi.fn().mockResolvedValue();
+      const localDispatch = vi.fn().mockResolvedValue(true);
       const data = { id: 42, messages: [{ id: 100 }] };
 
       await actions.setActiveChat(

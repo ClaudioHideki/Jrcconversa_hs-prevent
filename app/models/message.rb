@@ -67,6 +67,9 @@ class Message < ApplicationRecord
   before_validation :prevent_message_flooding
   before_save :ensure_processed_message_content
   before_save :ensure_in_reply_to
+  # Liquidable's before_create callbacks resolve variables first. Validate the
+  # final SMS text before it is persisted or any delivery job can be enqueued.
+  before_create :validate_flux_sms_length
 
   validates :account_id, presence: true
   validates :inbox_id, presence: true
@@ -290,6 +293,11 @@ class Message < ApplicationRecord
   end
 
   private
+
+  def validate_flux_sms_length
+    FluxSmsLengthValidator.new.validate(self)
+    raise ActiveRecord::RecordInvalid, self if errors.any?
+  end
 
   def prevent_message_flooding
     # Added this to cover the validation specs in messages

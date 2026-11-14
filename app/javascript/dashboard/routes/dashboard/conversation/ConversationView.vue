@@ -193,6 +193,7 @@ export default {
             after: messageId,
           })
           .then(() => {
+            if (Number(this.conversationId) !== selectedConversation.id) return;
             emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, { messageId });
           });
       } else {

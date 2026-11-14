@@ -12,6 +12,9 @@ const state = {
   allConversations: [],
   attachments: {},
   listLoadingStatus: true,
+  listError: false,
+  listRequestId: 0,
+  conversationContextVersion: 0,
   chatStatusFilter: wootConstants.STATUS_TYPE.OPEN,
   chatSortFilter: wootConstants.SORT_BY_TYPE.LATEST,
   currentInbox: null,
@@ -60,6 +63,10 @@ export const mutations = {
     _state.allConversations = newAllConversations;
   },
   [types.EMPTY_ALL_CONVERSATION](_state) {
+    _state.listRequestId = (_state.listRequestId || 0) + 1;
+    _state.conversationContextVersion =
+      (_state.conversationContextVersion || 0) + 1;
+    _state.listError = false;
     _state.allConversations = [];
     _state.selectedChatId = null;
   },
@@ -83,7 +90,7 @@ export const mutations = {
   [types.SET_PREVIOUS_CONVERSATIONS](_state, { id, data }) {
     if (data.length) {
       const [chat] = _state.allConversations.filter(c => c.id === id);
-      chat.messages.unshift(...data);
+      if (chat) chat.messages.unshift(...data);
     }
   },
   [types.SET_ALL_ATTACHMENTS](_state, { id, data }) {
@@ -269,6 +276,19 @@ export const mutations = {
 
   [types.SET_LIST_LOADING_STATUS](_state) {
     _state.listLoadingStatus = true;
+    _state.listRequestId = (_state.listRequestId || 0) + 1;
+    _state.listError = false;
+  },
+
+  [types.SET_LIST_ERROR_STATUS](_state) {
+    _state.listError = true;
+  },
+
+  [types.SET_CONVERSATION_MESSAGE_LOADING](_state, { id, loading, error }) {
+    const chat = getConversationById(_state)(id);
+    if (!chat) return;
+    chat.isFetchingMessages = loading;
+    chat.messageLoadError = error;
   },
 
   [types.CLEAR_LIST_LOADING_STATUS](_state) {
