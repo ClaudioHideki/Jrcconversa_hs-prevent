@@ -6,6 +6,16 @@ module Liquidable
     before_create :process_liquid_in_template_params
   end
 
+  # Resolve without saving or running callbacks. SMS preflight and the existing
+  # before_create callback use the same Liquid parser, drops and code protection.
+  def rendered_liquid_content
+    return content unless liquid_processable_message?
+
+    Liquid::Template.parse(modified_liquid_content).render(message_drops)
+  rescue Liquid::Error
+    content
+  end
+
   private
 
   def message_drops
@@ -23,12 +33,7 @@ module Liquidable
   end
 
   def process_liquid_in_content
-    return unless liquid_processable_message?
-
-    template = Liquid::Template.parse(modified_liquid_content)
-    self.content = template.render(message_drops)
-  rescue Liquid::Error
-    # If there is an error in the liquid syntax, we don't want to process it
+    self.content = rendered_liquid_content
   end
 
   def modified_liquid_content

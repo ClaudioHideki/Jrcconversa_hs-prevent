@@ -132,6 +132,7 @@ en:
       search:
         query_missing: Specify search string with parameter q
     messages:
+      flux_sms_too_long: 'exceeds the %{limit}-character SMS limit. Characters to remove: %{excess}.'
       search:
         time_range_limit_exceeded: 'Search is limited to the last %{days} days'
     categories:

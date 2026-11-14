@@ -19,6 +19,9 @@ import {
   syncConversationCallVisibility,
 } from 'dashboard/helper/voice';
 
+// Keep in-flight promises outside serializable Vuex state, scoped to each store.
+const messageRequests = new WeakMap();
+
 export const hasMessageFailedWithExternalError = pendingMessage => {
   // This helper is used to check if the message has failed with an external error.
   // We have two cases
@@ -45,34 +48,50 @@ const actions = {
 
   fetchAllConversations: async ({ commit, state, dispatch }) => {
     commit(types.SET_LIST_LOADING_STATUS);
+    const requestId = state.listRequestId;
     try {
-      const params = state.conversationFilters;
+      const params = { ...state.conversationFilters };
       const {
         data: { data },
       } = await ConversationApi.get(params);
+      if (state.listRequestId !== requestId) return false;
       buildConversationList(
         { commit, dispatch },
         params,
         data,
         params.assigneeType
       );
+      return true;
     } catch (error) {
-      // Handle error
+      if (state.listRequestId === requestId)
+        commit(types.SET_LIST_ERROR_STATUS);
+      return false;
+    } finally {
+      if (state.listRequestId === requestId)
+        commit(types.CLEAR_LIST_LOADING_STATUS);
     }
   },
 
-  fetchFilteredConversations: async ({ commit, dispatch }, params) => {
+  fetchFilteredConversations: async ({ commit, dispatch, state }, params) => {
     commit(types.SET_LIST_LOADING_STATUS);
+    const requestId = state.listRequestId;
     try {
       const { data } = await ConversationApi.filter(params);
+      if (state.listRequestId !== requestId) return false;
       buildConversationList(
         { commit, dispatch },
         params,
         data,
         'appliedFilters'
       );
+      return true;
     } catch (error) {
-      // Handle error
+      if (state.listRequestId === requestId)
+        commit(types.SET_LIST_ERROR_STATUS);
+      return false;
+    } finally {
+      if (state.listRequestId === requestId)
+        commit(types.CLEAR_LIST_LOADING_STATUS);
     }
   },
 
@@ -84,25 +103,63 @@ const actions = {
     commit(types.CLEAR_CURRENT_CHAT_WINDOW);
   },
 
-  fetchPreviousMessages: async ({ commit }, data) => {
-    try {
-      const {
-        data: { meta, payload },
-      } = await MessageApi.getPreviousMessages(data);
-      commit(`conversationMetadata/${types.SET_CONVERSATION_METADATA}`, {
-        id: data.conversationId,
-        data: meta,
-      });
-      commit(types.SET_PREVIOUS_CONVERSATIONS, {
-        id: data.conversationId,
-        data: payload,
-      });
-      if (!payload.length) {
-        commit(types.SET_ALL_MESSAGES_LOADED, data.conversationId);
+  fetchPreviousMessages: async ({ commit, state }, data) => {
+    const contextVersion = state.conversationContextVersion;
+    if (!messageRequests.has(state)) messageRequests.set(state, new Map());
+    const requests = messageRequests.get(state);
+    const key = JSON.stringify([
+      contextVersion,
+      data.conversationId,
+      data.before ?? null,
+      data.after ?? null,
+    ]);
+    if (requests.has(key)) return requests.get(key).promise;
+    const request = { contextVersion, conversationId: data.conversationId };
+    requests.set(key, request);
+    commit(types.SET_CONVERSATION_MESSAGE_LOADING, {
+      id: data.conversationId,
+      loading: true,
+      error: false,
+    });
+    request.promise = (async () => {
+      let failed = false;
+      try {
+        const {
+          data: { meta, payload },
+        } = await MessageApi.getPreviousMessages(data);
+        if (state.conversationContextVersion !== contextVersion) return false;
+        commit(`conversationMetadata/${types.SET_CONVERSATION_METADATA}`, {
+          id: data.conversationId,
+          data: meta,
+        });
+        commit(types.SET_PREVIOUS_CONVERSATIONS, {
+          id: data.conversationId,
+          data: payload,
+        });
+        if (!payload.length) {
+          commit(types.SET_ALL_MESSAGES_LOADED, data.conversationId);
+        }
+        return true;
+      } catch (error) {
+        failed = true;
+        return false;
+      } finally {
+        requests.delete(key);
+        if (state.conversationContextVersion === contextVersion) {
+          const loading = [...requests.values()].some(
+            pending =>
+              pending.contextVersion === contextVersion &&
+              pending.conversationId === data.conversationId
+          );
+          commit(types.SET_CONVERSATION_MESSAGE_LOADING, {
+            id: data.conversationId,
+            loading,
+            error: failed,
+          });
+        }
       }
-    } catch (error) {
-      // Handle error
-    }
+    })();
+    return request.promise;
   },
 
   fetchAllAttachments: async ({ commit }, conversationId) => {
@@ -196,12 +253,12 @@ const actions = {
     commit(types.CLEAR_ALL_MESSAGES_LOADED, data.id);
     if (data.dataFetched === undefined) {
       try {
-        await dispatch('fetchPreviousMessages', {
+        const loaded = await dispatch('fetchPreviousMessages', {
           after,
-          before: data.messages[0].id,
+          before: data.messages[0]?.id,
           conversationId: data.id,
         });
-        commit(types.SET_CHAT_DATA_FETCHED, data.id);
+        if (loaded) commit(types.SET_CHAT_DATA_FETCHED, data.id);
       } catch (error) {
         // Ignore error
       }
@@ -292,7 +349,7 @@ const actions = {
 
   createPendingMessageAndSend: async ({ dispatch }, data) => {
     const pendingMessage = createPendingMessage(data);
-    dispatch('sendMessageWithData', pendingMessage);
+    return dispatch('sendMessageWithData', pendingMessage);
   },
 
   sendMessageWithData: async ({ commit }, pendingMessage) => {

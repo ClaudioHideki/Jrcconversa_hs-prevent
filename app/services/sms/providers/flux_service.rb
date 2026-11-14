@@ -88,7 +88,7 @@ class Sms::Providers::FluxService
 
   def send_text(phone, text, partner_id: "JRC-#{SecureRandom.uuid}")
     phone = self.class.normalize_phone(phone)
-    limit = @channel.provider_config['send_type'].to_s == '4' ? 1280 : 160
+    limit = Sms::FluxMessageLength.limit_for(@channel)
     raise Error, "Flux: a mensagem deve conter de 1 a #{limit} caracteres." if text.blank? || text.length > limit
 
     secrets = @channel.flux_secrets

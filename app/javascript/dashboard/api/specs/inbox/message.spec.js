@@ -43,6 +43,18 @@ describe('#ConversationAPI', () => {
         }
       );
     });
+
+    it('#previewSms sends only content in the scoped conversation URL', () => {
+      messageAPI.previewSms({
+        conversationId: 12,
+        content: '{{contact.name}}',
+        accountId: 99,
+      });
+      expect(axiosMock.post).toHaveBeenCalledWith(
+        '/api/v1/conversations/12/messages/sms_preview',
+        { content: '{{contact.name}}' }
+      );
+    });
   });
   describe('#buildCreatePayload', () => {
     it('builds form payload if file is available', () => {

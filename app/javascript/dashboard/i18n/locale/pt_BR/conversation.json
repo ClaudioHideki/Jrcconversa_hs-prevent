@@ -1,5 +1,17 @@
 {
   "CONVERSATION": {
+    "MESSAGE_LOAD_ERROR": "Não foi possível carregar as mensagens.",
+    "FLUX_SMS_LIMIT": {
+      "CHECKING": "Verificando tamanho do SMS…",
+      "CHECK_ERROR": "Não foi possível verificar o tamanho do SMS. Tente novamente antes de enviar.",
+      "RETRY": "Tentar novamente",
+      "EXPANDED": "A contagem inclui as variáveis expandidas.",
+      "EMPTY": "A mensagem fica vazia após expandir as variáveis. Revise o texto.",
+      "SEND": "Enviar SMS",
+      "REACHED": "Limite de caracteres atingido.",
+      "EXCEEDED": "Mensagem acima do limite de {limit} caracteres. Reduza o texto para enviar.",
+      "REMOVE": "Caracteres que precisam ser removidos: {count}."
+    },
     "SELECT_A_CONVERSATION": "Por favor, selecione uma conversa no painel da esquerda",
     "CSAT_REPLY_MESSAGE": "Por favor, classifique a conversa",
     "404": "Desculpe, não conseguimos encontrar a conversa. Por favor, tente novamente",

@@ -1,5 +1,7 @@
 {
   "CHAT_LIST": {
+    "LOAD_ERROR": "Não foi possível carregar as conversas.",
+    "RETRY": "Tentar novamente",
     "LOADING": "Buscando conversas",
     "LOAD_MORE_CONVERSATIONS": "Carregar mais conversas",
     "EOF": "Todas as conversas carregadas 🎉",
