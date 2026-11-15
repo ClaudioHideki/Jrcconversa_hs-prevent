@@ -116,6 +116,7 @@ pt_BR:
         query_missing: Especifique a string de busca com o parâmetro q
     messages:
       flux_sms_too_long: 'Mensagem acima do limite de %{limit} caracteres. Reduza o texto para enviar. Caracteres que precisam ser removidos: %{excess}.'
+      flux_retry_not_allowed: 'Confira o resultado na Flux antes de criar um novo SMS. Reenviar esta mensagem pode causar entrega duplicada.'
       search:
         time_range_limit_exceeded: 'A pesquisa está limitada aos últimos %{days} dias'
     categories:

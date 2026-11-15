@@ -148,6 +148,16 @@ const { t } = useI18n();
 const route = useRoute();
 const inboxGetter = useMapGetter('inboxes/getInbox');
 const inbox = computed(() => inboxGetter.value(props.inboxId) || {});
+const isFluxSms = computed(
+  () =>
+    inbox.value.channel_type === 'Channel::Sms' &&
+    inbox.value.provider === 'flux'
+);
+const showExternalError = computed(
+  () =>
+    !!props.contentAttributes.externalError ||
+    (isFluxSms.value && props.status === MESSAGE_STATUS.FAILED)
+);
 const isOnChatwootCloud = useMapGetter('globalConfig/isOnChatwootCloud');
 const { replaceInstallationName } = useBranding();
 
@@ -526,6 +536,7 @@ provideMessageContext({
   orientation,
   isBotOrAgentMessage,
   shouldGroupWithNext,
+  isFluxSms,
 });
 </script>
 
@@ -552,7 +563,7 @@ provideMessageContext({
       :class="[
         gridClass,
         {
-          'gap-y-2': contentAttributes.externalError,
+          'gap-y-2': showExternalError,
           'w-full': variant === MESSAGE_VARIANTS.EMAIL,
         },
       ]"
@@ -584,10 +595,10 @@ provideMessageContext({
         />
       </div>
       <MessageError
-        v-if="contentAttributes.externalError"
+        v-if="showExternalError"
         class="[grid-area:meta]"
         :class="flexOrientationClass"
-        :error="contentAttributes.externalError"
+        :error="contentAttributes.externalError || ''"
         @retry="emit('retry')"
       />
     </div>

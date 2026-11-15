@@ -1,0 +1,65 @@
+name: Validate consolidated messaging
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      expected_sha:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Confirm source revision
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          APPROVED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          if [ -n "$APPROVED_SHA" ]; then test "$EXPECTED_SHA" = "$APPROVED_SHA"; fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install locked frontend dependencies
+        run: |
+          npm install -g pnpm@10.2.0
+          pnpm install --frozen-lockfile
+      - name: Backend regression tests and lint in isolated network
+        run: bash .github/scripts/test_backend.sh
+      - name: Frontend regressions, lint and builds
+        env:
+          TZ: UTC
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          mkdir -p tmp/ci-evidence
+          mapfile -t files < .github/scripts/frontend-specs.txt
+          pnpm exec vitest run "${files[@]}" --maxWorkers=2 --minWorkers=1 > tmp/ci-evidence/vitest.log 2>&1
+          mapfile -t lint_files < .github/scripts/frontend-lint.txt
+          pnpm exec eslint "${lint_files[@]}" --max-warnings 0 > tmp/ci-evidence/eslint.log 2>&1
+          pnpm run build:sdk > tmp/ci-evidence/sdk-build.log 2>&1
+          pnpm exec vite build > tmp/ci-evidence/frontend-build.log 2>&1
+      - name: Verify immutable publication guard
+        run: python3 .github/scripts/test_publish_guard.py
+      - name: Record the tested source and independently built SDK
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 .github/scripts/source_manifest.py "$EXPECTED_SHA"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validated-source-${{ github.event.pull_request.head.sha || github.sha }}
+          path: tmp/ci-evidence/
+          retention-days: 14

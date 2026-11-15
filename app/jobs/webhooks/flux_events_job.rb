@@ -1,5 +1,6 @@
 class Webhooks::FluxEventsJob < ApplicationJob
   queue_as :default
+  self.log_arguments = false
 
   def perform(channel_id, events)
     channel = Channel::Sms.find_by(id: channel_id, provider: 'flux')

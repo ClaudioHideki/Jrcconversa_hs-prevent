@@ -1,17 +1,27 @@
 class Webhooks::FluxController < ActionController::API
   def process_payload
-    token = params[:t].presence || request.headers['tokenCallback'].presence || params[:tokenCallback].presence
-    return head :unauthorized if token.blank? || token.bytesize > 50
-
-    channel = Channel::Sms.find_by(provider: 'flux', flux_callback_digest: Digest::SHA256.hexdigest(token))
+    channel = authenticated_channel
     return head :unauthorized unless channel
 
     raw = request.request_parameters
     events = raw['mensagens'] || [raw]
-    return head :unprocessable_entity unless events.is_a?(Array) && events.size.between?(1, 1000) && events.all? { |event| event.is_a?(Hash) }
+    return head :unprocessable_entity unless valid_events?(events)
 
     events = events.map { |event| event.slice('telefone', 'data', 'id', 'idParceiro', 'idResposta', 'status', 'resposta') }
     Webhooks::FluxEventsJob.perform_later(channel.id, events)
     render plain: 'OK'
+  end
+
+  private
+
+  def authenticated_channel
+    token = params[:t].presence || request.headers['tokenCallback'].presence || params[:tokenCallback].presence
+    return unless token.is_a?(String) && token.bytesize <= 50
+
+    Channel::Sms.find_by(provider: 'flux', flux_callback_digest: Digest::SHA256.hexdigest(token))
+  end
+
+  def valid_events?(events)
+    events.is_a?(Array) && events.size.between?(1, 1000) && events.all?(Hash)
   end
 end

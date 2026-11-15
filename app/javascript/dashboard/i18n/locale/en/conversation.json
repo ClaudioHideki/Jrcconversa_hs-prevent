@@ -12,7 +12,26 @@
       "EXCEEDED": "Message exceeds the {limit}-character limit. Shorten the text to send.",
       "REMOVE": "Characters to remove: {count}."
     },
-    "FLUX_SENT_PENDING": "Solicitação enviada à Flux; aguardando confirmação de entrega.",
+    "FLUX_SENT_PENDING": "Request sent to Flux; awaiting delivery confirmation.",
+    "FLUX_FAILURE": {
+      "LABEL": "Failed — {reason}",
+      "RETRY_HINT": "Check the result in Flux before creating a new SMS to avoid duplicate delivery.",
+      "REASONS": {
+        "SPAM": "Suspected spam.",
+        "INVALID_NUMBER": "Invalid number.",
+        "BLOCKED_NUMBER": "Number blocked.",
+        "BLOCKED": "Blocked by the carrier.",
+        "REJECTED": "Rejected by the carrier.",
+        "EXPIRED": "Delivery expired.",
+        "UNDELIVERED": "Message not delivered.",
+        "CHARACTER_LIMIT": "Character limit exceeded.",
+        "DELETED": "Message deleted by the provider.",
+        "CANCELLED": "Message cancelled.",
+        "LANDLINE": "Landline number.",
+        "NO_CREDIT": "Insufficient credit.",
+        "UNKNOWN": "Reason not provided by the provider."
+      }
+    },
     "FLUX_FALLBACK": {
       "WAITING": "Flux backup SMS: waiting for Twilio delivery",
       "SENDING": "Flux backup SMS: attempt started",

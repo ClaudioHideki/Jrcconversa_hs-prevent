@@ -108,6 +108,66 @@ describe Twilio::DeliveryStatusService do
         expect(conversation.reload.messages.last.status).to eq('failed')
         expect(conversation.reload.messages.last.external_error).to eq('Error code: 30008')
       end
+
+      context 'when updating persisted provider metadata' do
+        let(:message) { conversation.messages.last }
+        let(:params) do
+          { MessagingServiceSid: twilio_channel.messaging_service_sid, MessageSid: message.source_id,
+            MessageStatus: 'failed', ErrorCode: '30008', ErrorMessage: 'Unknown error' }
+        end
+
+        it 'keeps the error, code, fallback and other attributes together through persistence and realtime serialization' do
+          metadata = { 'sms_fallback' => { 'state' => 'waiting', 'inbox_id' => 123 }, 'translations' => { 'pt' => 'Texto' } }
+          message.update!(content_attributes: metadata)
+          described_class.new(params: params).perform
+          expect(message.reload.external_error).to eq('30008 - Unknown error')
+          expect(message.content_attributes).to include(metadata.merge('external_error' => '30008 - Unknown error', 'twilio_error_code' => '30008'))
+          expect(message.push_event_data[:content_attributes]).to include('external_error' => '30008 - Unknown error')
+        end
+
+        it 'retains a known failure reason when a later callback omits the error' do
+          described_class.new(params: params).perform
+          described_class.new(params: params.except(:ErrorCode, :ErrorMessage)).perform
+          expect(message.reload.external_error).to eq('30008 - Unknown error')
+          expect(message.content_attributes['twilio_error_code']).to eq('30008')
+        end
+
+        it 'clears only failure metadata after real delivery and ignores a late failure' do
+          message.update!(content_attributes: { 'marker' => 'preserved' })
+          described_class.new(params: params).perform
+          described_class.new(params: params.merge(MessageStatus: 'delivered')).perform
+          described_class.new(params: params).perform
+          expect(message.reload).to be_delivered
+          expect(message.external_error).to be_nil
+          expect(message.content_attributes).to include('marker' => 'preserved', 'twilio_error_code' => nil)
+        end
+
+        it 'does not change a read message or repeat the update for a duplicate callback' do
+          described_class.new(params: params).perform
+          saved_at = message.reload.updated_at
+          described_class.new(params: params).perform
+          expect(message.reload.updated_at).to eq(saved_at)
+          message.update!(status: :read, external_error: nil)
+          described_class.new(params: params).perform
+          expect(message.reload).to be_read
+          expect(message.external_error).to be_nil
+        end
+
+        it 'does not update a message with the same source id in another inbox and account' do
+          other = create(:message, source_id: message.source_id, content_attributes: { external_error: 'untouched' })
+          described_class.new(params: params).perform
+          expect(other.reload).to be_sent
+          expect(other.external_error).to eq('untouched')
+          expect(message.reload).to be_failed
+        end
+      end
     end
+  end
+
+  it 'logs a missing channel without the recipient phone number' do
+    allow(Rails.logger).to receive(:warn)
+    described_class.new(params: { AccountSid: 'unknown', From: '+5511999999999', MessageSid: 'SM-test' }).perform
+    expect(Rails.logger).to have_received(:warn).with(include('lookup failed', 'from_present=true', 'message_sid=SM-test'))
+    expect(Rails.logger).not_to have_received(:warn).with(include('5511999999999'))
   end
 end

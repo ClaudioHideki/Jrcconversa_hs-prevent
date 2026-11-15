@@ -14,17 +14,20 @@ class Twilio::DeliveryStatusService
 
   def process_statuses
     @message.with_lock do
-      return if @message.read?
-      return if @message.delivered? && status != 'read'
-      return if @message.failed? && status == 'sent'
+      next if stale_status?
 
-      error = status == 'failed' ? (external_error.presence || @message.external_error) : nil
-      error_code = params[:ErrorCode].presence || @message.content_attributes['twilio_error_code'] if status == 'failed'
-      @message.update!(
-        status: status, external_error: error,
-        content_attributes: @message.content_attributes.merge('twilio_error_code' => error_code&.to_s)
-      )
+      @message.update!(status: status, content_attributes: status_attributes)
     end
+  end
+
+  def stale_status?
+    @message.read? || (@message.delivered? && status != 'read') || (@message.failed? && status == 'sent')
+  end
+
+  def status_attributes
+    error = status == 'failed' ? (external_error.presence || @message.external_error) : nil
+    error_code = params[:ErrorCode].presence || @message.content_attributes['twilio_error_code'] if status == 'failed'
+    @message.content_attributes.merge('external_error' => error, 'twilio_error_code' => error_code&.to_s)
   end
 
   def supported_status?
@@ -72,7 +75,7 @@ class Twilio::DeliveryStatusService
     Rails.logger.warn(
       '[TWILIO] Delivery status channel lookup failed ' \
       "account_sid=#{params[:AccountSid]} " \
-      "from=#{params[:From]} " \
+      "from_present=#{params[:From].present?} " \
       "messaging_service_sid=#{params[:MessagingServiceSid]} " \
       "message_sid=#{params[:MessageSid]}"
     )

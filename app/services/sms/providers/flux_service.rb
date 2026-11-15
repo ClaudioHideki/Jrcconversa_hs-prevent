@@ -53,20 +53,15 @@ class Sms::Providers::FluxService
 
     partner_id = "JRC-SMS-#{message.id}"
     phone = self.class.normalize_phone(phone)
-    message.with_lock do
-      message.update!(content_attributes: message.content_attributes.merge('flux_partner_id' => partner_id, 'flux_phone' => phone))
-    end
+    return message.source_id unless reserve_attempt(message, partner_id, phone)
+
     provider_id = send_text(phone, message.outgoing_content, partner_id: partner_id)
     message.with_lock do
       message.update!(source_id: provider_id) if message.source_id.blank?
     end
     provider_id
   rescue Error => e
-    message.with_lock do
-      unless message.delivered? || message.read?
-        message.update!(status: :failed, content_attributes: message.content_attributes.merge('external_error' => e.message))
-      end
-    end
+    record_failure(message, e.message)
     nil
   end
 
@@ -110,6 +105,24 @@ class Sms::Providers::FluxService
   end
 
   private
+
+  def reserve_attempt(message, partner_id, phone)
+    message.with_lock do
+      next false if message.content_attributes['flux_partner_id'].present?
+
+      message.update!(content_attributes: message.content_attributes.merge('flux_partner_id' => partner_id, 'flux_phone' => phone))
+      true
+    end
+  end
+
+  def record_failure(message, error)
+    message.with_lock do
+      next if message.status.in?(%w[delivered read])
+      next if message.failed? && message.content_attributes['flux_status'].present?
+
+      message.update!(status: :failed, content_attributes: message.content_attributes.merge('external_error' => error))
+    end
+  end
 
   def parse_send_response(body, partner_id)
     value = JSON.parse(body)
