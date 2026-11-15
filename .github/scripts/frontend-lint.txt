@@ -1,0 +1,7 @@
+app/javascript/dashboard/components-next/message/Message.vue
+app/javascript/dashboard/components-next/message/MessageMeta.vue
+app/javascript/dashboard/components-next/message/MessageError.vue
+app/javascript/dashboard/components-next/message/fluxFailureReason.js
+app/javascript/dashboard/components-next/message/specs/FluxDelivery.spec.js
+app/javascript/dashboard/store/modules/conversations/index.js
+app/javascript/dashboard/store/modules/specs/conversations/fluxDelivery.spec.js

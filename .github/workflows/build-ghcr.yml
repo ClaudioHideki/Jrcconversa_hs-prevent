@@ -3,6 +3,10 @@ name: Build JRC Conversas SMS Flux
 on:
   workflow_dispatch:
     inputs:
+      expected_sha:
+        description: Exact approved integration commit to build
+        type: string
+        required: true
       publish:
         description: Publish this reviewed revision to GHCR
         type: boolean
@@ -23,9 +27,17 @@ env:
   IMAGE_TAG: sha-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate-consolidated.yml
+    with:
+      expected_sha: ${{ inputs.expected_sha }}
+
   build-and-push:
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
 
     steps:
       - name: Checkout
@@ -37,7 +49,10 @@ jobs:
       - name: Confirm the checked out revision
         env:
           EXPECTED_SHA: ${{ github.sha }}
-        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          APPROVED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          test "$EXPECTED_SHA" = "$APPROVED_SHA"
 
       - name: Free runner space for the production image
         run: |
@@ -46,6 +61,12 @@ jobs:
 
       - name: Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Download validated source and SDK reference
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-source-${{ github.sha }}
+          path: tmp/ci-evidence
 
       - name: Login GHCR
         if: inputs.publish
@@ -76,24 +97,19 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+      - name: Verify integrated code, SDK, assets and runtime before publication
+        env:
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        run: |
+          python3 .github/scripts/verify_image.py "$IMAGE_REF" tmp/ci-evidence/source.json
+          bash .github/scripts/smoke_image.sh "$IMAGE_REF"
+
       - name: Publish once without replacing an existing tag
         if: inputs.publish
         id: publish
         env:
           IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-        run: |
-          error_file="$(mktemp)"
-          if docker buildx imagetools inspect "$IMAGE_REF" > /dev/null 2> "$error_file"; then
-            echo "Refusing to overwrite existing tag: $IMAGE_REF" >&2
-            exit 1
-          elif [ "$(cat "$error_file")" != "ERROR: $IMAGE_REF: not found" ]; then
-            cat "$error_file" >&2
-            exit 1
-          fi
-          docker push "$IMAGE_REF"
-          digest="$(docker buildx imagetools inspect "$IMAGE_REF" --format '{{.Manifest.Digest}}')"
-          test -n "$digest"
-          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+        run: bash .github/scripts/publish_once.sh
 
       - name: Record the build and publication status
         env:
@@ -107,3 +123,46 @@ jobs:
           if [ "$PUBLISHED" = "true" ]; then
             printf '\nCompose: `%s/%s@%s`\n' "$REGISTRY" "$IMAGE_NAME" "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: built-image-evidence-${{ github.sha }}
+          path: tmp/ci-evidence/
+          retention-days: 14
+
+  verify-published:
+    if: inputs.publish
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: validated-source-${{ github.sha }}
+          path: tmp/ci-evidence
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull by immutable digest on an independent runner
+        env:
+          DIGEST: ${{ needs.build-and-push.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          image="$REGISTRY/$IMAGE_NAME@$DIGEST"
+          docker pull --platform linux/amd64 "$image"
+          python3 .github/scripts/verify_image.py "$image" tmp/ci-evidence/source.json
+          bash .github/scripts/smoke_image.sh "$image"
+          printf 'Verified immutable image: `%s`\n' "$image" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-image-evidence-${{ github.sha }}
+          path: tmp/ci-evidence/
+          retention-days: 14
