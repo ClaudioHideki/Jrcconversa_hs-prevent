@@ -133,6 +133,7 @@ en:
         query_missing: Specify search string with parameter q
     messages:
       flux_sms_too_long: 'exceeds the %{limit}-character SMS limit. Characters to remove: %{excess}.'
+      flux_retry_not_allowed: 'Check the result in Flux before creating a new SMS. Resending this message could cause duplicate delivery.'
       search:
         time_range_limit_exceeded: 'Search is limited to the last %{days} days'
     categories:

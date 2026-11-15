@@ -229,7 +229,38 @@ export const mutations = {
 
     const pendingMessageIndex = findPendingMessageIndex(chat, message);
     if (pendingMessageIndex !== -1) {
-      chat.messages[pendingMessageIndex] = message;
+      const previous = chat.messages[pendingMessageIndex];
+      // HTTP responses and broadcast jobs can arrive after a Flux confirmation.
+      // Keep terminal results when an older event would regress their status.
+      const fluxStatusRegression =
+        (previous.status === MESSAGE_STATUS.DELIVERED &&
+          message.status !== MESSAGE_STATUS.DELIVERED) ||
+        (previous.status === MESSAGE_STATUS.FAILED &&
+          ['sent', 'progress'].includes(message.status));
+      const fluxSourceIdRegression =
+        previous.status === MESSAGE_STATUS.SENT &&
+        message.status === MESSAGE_STATUS.SENT &&
+        previous.source_id &&
+        !message.source_id;
+      const preserveFluxStatus =
+        previous.content_attributes?.flux_partner_id &&
+        (previous.content_attributes?.flux_status_at ||
+          previous.content_attributes?.external_error ||
+          previous.source_id) &&
+        (fluxStatusRegression || fluxSourceIdRegression);
+      chat.messages[pendingMessageIndex] = preserveFluxStatus
+        ? {
+            ...message,
+            status: previous.status,
+            source_id: previous.source_id,
+            content_attributes: {
+              ...message.content_attributes,
+              ...previous.content_attributes,
+              external_error:
+                previous.content_attributes.external_error ?? null,
+            },
+          }
+        : message;
     } else {
       chat.messages.push(message);
       chat.timestamp = message.created_at;

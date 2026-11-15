@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useMessageContext } from './provider.js';
 import { hasOneDayPassed } from 'shared/helpers/timeHelper';
 import { ORIENTATION, MESSAGE_STATUS } from './constants';
+import { fluxFailureReason } from './fluxFailureReason';
 
 defineProps({
   error: { type: String, required: true },
@@ -12,22 +13,40 @@ defineProps({
 
 const emit = defineEmits(['retry']);
 
-const { orientation, status, createdAt, content, attachments } =
-  useMessageContext();
+const {
+  orientation,
+  status,
+  createdAt,
+  content,
+  attachments,
+  contentAttributes,
+  isFluxSms,
+} = useMessageContext();
 
 const { t } = useI18n();
 
 const canRetry = computed(() => {
+  if (isFluxSms?.value) return false;
   const hasContent = content.value !== null;
   const hasAttachments = attachments.value && attachments.value.length > 0;
   return !hasOneDayPassed(createdAt.value) && (hasContent || hasAttachments);
 });
+
+const fluxDescription = computed(() => {
+  const reason = fluxFailureReason(contentAttributes.value);
+  // The helper returns only the finite set of documented reason keys.
+  // eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys
+  return t(`CONVERSATION.FLUX_FAILURE.REASONS.${reason}`);
+});
 </script>
 
 <template>
-  <div class="text-xs text-n-ruby-11 flex items-center gap-1.5">
-    <span>{{ t('CHAT_LIST.FAILED_TO_SEND') }}</span>
-    <div class="relative group">
+  <div class="text-xs text-n-ruby-11 flex flex-wrap items-center gap-1.5">
+    <span v-if="isFluxSms">
+      {{ t('CONVERSATION.FLUX_FAILURE.LABEL', { reason: fluxDescription }) }}
+    </span>
+    <span v-else>{{ t('CHAT_LIST.FAILED_TO_SEND') }}</span>
+    <div v-if="error && !isFluxSms" class="relative group">
       <div
         class="bg-n-alpha-2 rounded-md size-5 grid place-content-center cursor-pointer"
       >
@@ -55,5 +74,8 @@ const canRetry = computed(() => {
     >
       <Icon icon="i-lucide-refresh-ccw" class="text-n-ruby-11 size-[14px]" />
     </button>
+    <span v-if="isFluxSms" class="basis-full text-n-slate-11">
+      {{ t('CONVERSATION.FLUX_FAILURE.RETRY_HINT') }}
+    </span>
   </div>
 </template>

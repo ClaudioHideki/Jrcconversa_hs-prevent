@@ -30,6 +30,7 @@ const {
   sourceId,
   messageType,
   contentAttributes,
+  isFluxSms,
 } = useMessageContext();
 
 const readableTime = computed(() =>
@@ -146,11 +147,7 @@ const statusToShow = computed(() => {
     <MessageStatus
       v-if="showStatusIndicator"
       :status="statusToShow"
-      :sent-tooltip="
-        contentAttributes.fluxPartnerId
-          ? $t('CONVERSATION.FLUX_SENT_PENDING')
-          : ''
-      "
+      :sent-tooltip="isFluxSms ? $t('CONVERSATION.FLUX_SENT_PENDING') : ''"
     />
   </div>
 </template>

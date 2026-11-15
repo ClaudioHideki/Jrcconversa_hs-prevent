@@ -12,3 +12,4 @@ filter_regex = /\A(?!.*\bwebsite_token\b).*token/i
 # Apply the regex for filtering
 Rails.application.config.filter_parameters += [filter_regex]
 Rails.application.config.filter_parameters += [:flux_account, :flux_code, :flux_credentials, /\Aaccount\z/, /\Acode\z/, /\At\z/]
+Rails.application.config.filter_parameters += [:telefone, :flux_phone]

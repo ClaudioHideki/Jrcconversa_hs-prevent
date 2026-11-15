@@ -39,6 +39,9 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   def retry
     return if message.blank?
+    if @conversation.inbox.channel.is_a?(Channel::Sms) && @conversation.inbox.channel.flux?
+      return render_could_not_create_error(I18n.t('errors.messages.flux_retry_not_allowed'))
+    end
 
     service = Messages::StatusUpdateService.new(message, 'sent')
     service.perform

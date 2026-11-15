@@ -155,6 +155,60 @@ separada; consultar MO não substitui o comprovante de entrega da operadora.
 
 Base do contrato: manual Flux WebService e HTTP v2.7.2, envio JSON e callback; especificação técnica JRC fornecida para esta implementação.
 
+## Entrega e rejeições: validação local de 15/11/2026
+
+Aceitação pelo endpoint de envio mantém `sent` (✓). Somente um callback autenticado
+`ENTREGUE`, associado à mensagem, ao destinatário e à caixa corretos, confirma
+`delivered` (✓✓). A Flux não fornece confirmação de leitura neste contrato.
+Receber MO, aceitar um POST ou executar uma consulta de respostas não confirma entrega.
+
+O callback usa os IDs `JRC-SMS-<message_id>` e o identificador da Flux, com verificação
+de conflitos. Reconhece o ID provisório da reserva Twilio já existente e pode salvar
+o ID real antes de a resposta do envio chegar. Datas são comparadas como instantes,
+respeitando offsets e `FLUX_CALLBACK_TIME_ZONE`, em vez de ordenar strings.
+Eventos desconhecidos, inválidos, antigos ou de outra caixa/conta não modificam
+mensagens. Uma entrega confirmada não regride. Repetições não criam mensagens
+nem gravam novamente uma confirmação idêntica.
+
+O motivo original fica nos metadados. A conversa apresenta descrições dos estados
+documentados e códigos de erro já suportados; códigos desconhecidos mostram
+“Motivo não informado pelo provedor.” Os erros locais históricos de tamanho e
+celular inválido também são reconhecidos na apresentação, sem regravar registros.
+A API e o evento `message.updated` mantêm os atributos como objeto. O tipo `string`
+observado no JSON do PostgreSQL é compatível com o `store ... coder: JSON` do modelo;
+o teste de roundtrip confirma a leitura correta pelo Rails. Não há migration.
+
+Uma resposta HTTP atrasada não substitui uma falha ou entrega Flux já confirmada
+por callback. Um broadcast antigo de falha também não regride uma entrega. O frontend atualiza a bolha pelo fluxo existente de eventos, sem
+recarregar a conversa. As regras dos outros canais permanecem preservadas.
+
+A tentativa de envio é reservada sob trava antes do POST. Jobs repetidos não
+disparam novamente a mesma mensagem. O botão de retry da mensagem persistida
+Flux é removido e a API recusa esse retry sem apagar seus metadados. Em caso de
+resultado incerto, confira na Flux antes de criar um novo SMS: confirmação ausente
+não prova ausência de entrega. Não há reenvio automático, inclusive após timeout
+ou interrupção do worker. Essa proteção pode deixar uma tentativa interrompida
+pendente de conferência manual, evitando repetir uma cobrança incerta.
+
+### Evidências e dependências externas
+
+Os totais fornecidos pelo usuário (304 `sent`, zero `delivered`, 42 `failed`)
+não comprovam defeito do webhook. Testes locais cobrem autenticação, fila, callback,
+persistência, API, evento e indicadores. A chegada real do callback ainda depende
+de evidência da Flux e do ambiente autorizado: ID da mensagem, estado no provedor,
+horário/fuso, resposta HTTP do endpoint e processamento do worker. Compartilhe
+somente registros sem tokens, credenciais ou telefones completos. O limite de
+50 caracteres da URL e os 401 históricos descritos acima continuam pontos a
+confirmar externamente; esta alteração não troca URL, token ou modalidade.
+
+A ampliação de testes reproduziu três falhas de erro externo Twilio também no
+commit-base `0c114cf`: gravar `external_error` junto de `content_attributes` faz o
+hash anterior substituir o valor do accessor. Essa parte ficou sem alterações,
+pois requer autorização própria. Deve ser resolvida ou avaliada antes da publicação.
+
+Esta candidata é local. A imagem publicada `sha256:63e9e4b2caa4bbee0df6da169e3cc406d782eaca80ba787747fbe0572afa7365`
+não é modificada. Integração, nova imagem e implantação dependem de autorização.
+
 ## Respostas MO com quebras de linha (30/10/2026)
 
 O diagnóstico somente de leitura no HS encontrou 39 registros de nove campos:

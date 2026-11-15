@@ -27,4 +27,38 @@ RSpec.describe Sms::Providers::FluxService do
       expect(WebMock).not_to have_requested(:post, endpoint)
     end
   end
+
+  context 'when processing persisted messages' do
+    let(:conversation) { create(:conversation, account: channel.account, inbox: channel.inbox) }
+    let(:message) { create(:message, account: channel.account, inbox: channel.inbox, conversation: conversation, message_type: :outgoing) }
+
+    it 'records acceptance as sent without claiming delivery and sends only once' do
+      service.send_message('5511999999999', message)
+      service.send_message('5511999999999', message.reload)
+      expect(message.reload).to be_sent
+      expect(message.source_id).to eq('1234567')
+      expect(WebMock).to have_requested(:post, endpoint).once
+    end
+
+    it 'does not automatically repeat a rejected or unconfirmed attempt' do
+      stub_request(:post, endpoint).to_return(status: 200, body: '175')
+      service.send_message('5511999999999', message)
+      service.send_message('5511999999999', message.reload)
+      expect(message.reload).to be_failed
+      expect(message.external_error).to eq('Flux 175: Mensagem classificada como spam')
+      expect(WebMock).to have_requested(:post, endpoint).once
+    end
+
+    it 'keeps a callback received before the send response and never regresses delivery' do
+      stub_request(:post, endpoint).to_return do
+        event = { telefone: '5511999999999', id: '1234567', idParceiro: "JRC-SMS-#{message.id}",
+                  status: 'ENTREGUE', data: '2026-11-15 12:00:00' }
+        Sms::FluxCallbackService.new(channel, event).perform
+        { status: 200, body: '{"codigo":"000","id":"1234567"}' }
+      end
+      service.send_message('5511999999999', message)
+      expect(message.reload).to be_delivered
+      expect(message.source_id).to eq('1234567')
+    end
+  end
 end

@@ -12,6 +12,26 @@
       "EXCEEDED": "Mensagem acima do limite de {limit} caracteres. Reduza o texto para enviar.",
       "REMOVE": "Caracteres que precisam ser removidos: {count}."
     },
+    "FLUX_SENT_PENDING": "Solicitação enviada à Flux; aguardando confirmação de entrega.",
+    "FLUX_FAILURE": {
+      "LABEL": "Falhou — {reason}",
+      "RETRY_HINT": "Confira o resultado na Flux antes de criar um novo SMS para evitar entrega duplicada.",
+      "REASONS": {
+        "SPAM": "Suspeita de spam.",
+        "INVALID_NUMBER": "Número inválido.",
+        "BLOCKED_NUMBER": "Número bloqueado.",
+        "BLOCKED": "Bloqueada pela operadora.",
+        "REJECTED": "Rejeitada pela operadora.",
+        "EXPIRED": "Prazo de entrega expirado.",
+        "UNDELIVERED": "Mensagem não entregue.",
+        "CHARACTER_LIMIT": "Limite de caracteres excedido.",
+        "DELETED": "Mensagem excluída pelo provedor.",
+        "CANCELLED": "Mensagem cancelada.",
+        "LANDLINE": "Número de telefone fixo.",
+        "NO_CREDIT": "Saldo insuficiente.",
+        "UNKNOWN": "Motivo não informado pelo provedor."
+      }
+    },
     "SELECT_A_CONVERSATION": "Por favor, selecione uma conversa no painel da esquerda",
     "CSAT_REPLY_MESSAGE": "Por favor, classifique a conversa",
     "404": "Desculpe, não conseguimos encontrar a conversa. Por favor, tente novamente",
