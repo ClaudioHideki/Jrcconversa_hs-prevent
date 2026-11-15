@@ -1,5 +1,6 @@
 class ActionCableBroadcastJob < ApplicationJob
   queue_as :critical
+  self.log_arguments = false
   include Events::Types
 
   CONVERSATION_UPDATE_EVENTS = [

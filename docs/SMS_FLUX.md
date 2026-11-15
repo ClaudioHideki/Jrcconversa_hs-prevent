@@ -201,10 +201,12 @@ somente registros sem tokens, credenciais ou telefones completos. O limite de
 50 caracteres da URL e os 401 históricos descritos acima continuam pontos a
 confirmar externamente; esta alteração não troca URL, token ou modalidade.
 
-A ampliação de testes reproduziu três falhas de erro externo Twilio também no
-commit-base `0c114cf`: gravar `external_error` junto de `content_attributes` faz o
-hash anterior substituir o valor do accessor. Essa parte ficou sem alterações,
-pois requer autorização própria. Deve ser resolvida ou avaliada antes da publicação.
+A ampliação anterior reproduziu três falhas de erro externo Twilio também no
+commit-base `0c114cf`: gravar `external_error` junto de `content_attributes` fazia o
+hash anterior substituir o valor do accessor. A etapa final autorizada corrige isso
+gravando erro, código e demais metadados no mesmo hash, com testes de regressão.
+Consulte [a conferência de callbacks e logs](SMS_FLUX_CALLBACK_HOMOLOGATION.md)
+para separar os resultados locais das pendências de homologação real com a Flux.
 
 Esta candidata é local. A imagem publicada `sha256:63e9e4b2caa4bbee0df6da169e3cc406d782eaca80ba787747fbe0572afa7365`
 não é modificada. Integração, nova imagem e implantação dependem de autorização.

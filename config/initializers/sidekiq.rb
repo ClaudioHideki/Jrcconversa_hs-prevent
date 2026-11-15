@@ -1,4 +1,5 @@
 require Rails.root.join('lib/redis/config')
+require Rails.root.join('lib/sensitive_job_error_logger')
 
 schedule_file = 'config/schedule.yml'
 
@@ -17,6 +18,8 @@ end
 
 Sidekiq.configure_server do |config|
   config.redis = Redis::Config.app
+  config.error_handlers.delete(Sidekiq::Config::ERROR_HANDLER)
+  config.error_handlers << SensitiveJobErrorLogger unless config.error_handlers.include?(SensitiveJobErrorLogger)
 
   if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_SIDEKIQ_DEQUEUE_LOGGER', false))
     config.server_middleware do |chain|

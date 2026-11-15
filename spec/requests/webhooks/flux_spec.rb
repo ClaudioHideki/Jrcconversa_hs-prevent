@@ -37,6 +37,30 @@ RSpec.describe 'Flux delivery webhook', type: :request do
     expect(message.reload).to be_sent
   end
 
+  [nil, ['invalid'], { 'unexpected' => 'invalid' }, 'x' * 51].each do |invalid_token|
+    it "rejects a malformed #{invalid_token.class} token without an exception or queueing" do
+      expect do
+        post '/f', params: { t: invalid_token, mensagens: [event] }, as: :json
+      end.not_to have_enqueued_job(Webhooks::FluxEventsJob)
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  it 'accepts tokenCallback in the JSON body and strips authentication fields from the job' do
+    expect do
+      post '/f', params: event.merge(tokenCallback: token), as: :json
+    end.to have_enqueued_job(Webhooks::FluxEventsJob).with(channel.id, [event.stringify_keys])
+    expect(response.body).to eq('OK')
+  end
+
+  it 'does not acknowledge success when the job queue raises an error' do
+    allow(Webhooks::FluxEventsJob).to receive(:perform_later).and_raise(Redis::CannotConnectError, 'Synthetic queue outage')
+    post '/f', params: { t: token, mensagens: [event] }, as: :json
+    expect(response).to have_http_status(:internal_server_error)
+    expect(response.body).not_to eq('OK')
+    expect(message.reload).to be_sent
+  end
+
   it 'rejects an oversized or empty batch after authentication' do
     post '/f', params: { t: token, mensagens: [] }, as: :json
     expect(response).to have_http_status(:unprocessable_entity)
