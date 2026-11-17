@@ -66,6 +66,7 @@ const clearFormState = () => {
 const contactById = useMapGetter('contacts/getContactById');
 const contactsUiFlags = useMapGetter('contacts/getUIFlags');
 const currentUser = useMapGetter('getCurrentUser');
+const accountId = useMapGetter('getCurrentAccountId');
 const globalConfig = useMapGetter('globalConfig/get');
 const uiFlags = useMapGetter('contactConversations/getUIFlags');
 const messageSignature = useMapGetter('getMessageSignature');
@@ -167,6 +168,7 @@ const discardCompose = () => {
 };
 
 const createConversation = async ({ payload, isFromWhatsApp }) => {
+  if (uiFlags.value.isCreating) return false;
   try {
     const data = await store.dispatch('contactConversations/create', {
       params: payload,
@@ -243,6 +245,7 @@ onMounted(() => resetContacts());
     </template>
     <template #content>
       <ComposeNewConversationForm
+        :account-id="accountId"
         :form-state="formState"
         :contacts="contacts"
         :contact-id="contactId"

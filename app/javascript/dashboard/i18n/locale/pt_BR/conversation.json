@@ -2,6 +2,7 @@
   "CONVERSATION": {
     "MESSAGE_LOAD_ERROR": "Não foi possível carregar as mensagens.",
     "FLUX_SMS_LIMIT": {
+      "UNAVAILABLE_CONVERSATION": "Não é possível confirmar o tamanho antes de criar a conversa: a mensagem usa o ID da nova conversa. Remova essa variável para validar e enviar.",
       "CHECKING": "Verificando tamanho do SMS…",
       "CHECK_ERROR": "Não foi possível verificar o tamanho do SMS. Tente novamente antes de enviar.",
       "RETRY": "Tentar novamente",
@@ -12,7 +13,7 @@
       "EXCEEDED": "Mensagem acima do limite de {limit} caracteres. Reduza o texto para enviar.",
       "REMOVE": "Caracteres que precisam ser removidos: {count}."
     },
-    "FLUX_SENT_PENDING": "Solicitação enviada à Flux; aguardando confirmação de entrega.",
+    "FLUX_SENT_PENDING": "Aguardando confirmação de entrega",
     "FLUX_FAILURE": {
       "LABEL": "Falhou — {reason}",
       "RETRY_HINT": "Confira o resultado na Flux antes de criar um novo SMS para evitar entrega duplicada.",

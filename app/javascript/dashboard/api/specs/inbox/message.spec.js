@@ -55,6 +55,24 @@ describe('#ConversationAPI', () => {
         { content: '{{contact.name}}' }
       );
     });
+
+    it('#previewNewSms sends contact and inbox in the account-scoped collection URL', () => {
+      messageAPI.previewNewSms({
+        inboxId: 12,
+        contactId: 34,
+        sourceId: '+5511999999999',
+        content: '{{contact.name}}',
+      });
+      expect(axiosMock.post).toHaveBeenCalledWith(
+        '/api/v1/conversations/sms_preview',
+        {
+          inbox_id: 12,
+          contact_id: 34,
+          source_id: '+5511999999999',
+          content: '{{contact.name}}',
+        }
+      );
+    });
   });
   describe('#buildCreatePayload', () => {
     it('builds form payload if file is available', () => {

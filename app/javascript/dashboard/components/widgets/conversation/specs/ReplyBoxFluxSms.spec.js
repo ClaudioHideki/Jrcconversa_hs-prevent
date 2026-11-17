@@ -136,6 +136,8 @@ describe('ReplyBox Flux SMS sending', () => {
       conversationId: 1,
       accountId: 1,
       content: message,
+      inboxId: 1,
+      variablesKey: JSON.stringify(wrapper.vm.messageVariables),
     });
     expect(wrapper.vm.fluxSmsLength).toBe(160);
     expect(wrapper.vm.isReplyButtonDisabled).toBe(false);

@@ -247,7 +247,9 @@ export default {
         result?.status === 'ready' &&
         result.content === this.message &&
         result.conversationId === this.conversationId &&
-        result.accountId === this.accountId
+        result.accountId === this.accountId &&
+        result.inboxId === this.inboxId &&
+        result.variablesKey === JSON.stringify(this.messageVariables)
       );
     },
     isSendingCurrentDraft() {
@@ -1393,6 +1395,7 @@ export default {
       :content="message"
       :conversation-id="conversationId"
       :account-id="accountId"
+      :inbox-id="inboxId"
       :variables="messageVariables"
       :limit="maxLength"
       @validation="onFluxSmsValidation"

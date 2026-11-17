@@ -26,8 +26,10 @@ import ActionButtons from './ActionButtons.vue';
 import InboxEmptyState from './InboxEmptyState.vue';
 import AttachmentPreviews from './AttachmentPreviews.vue';
 import CopilotReplyBottomPanel from 'dashboard/components/widgets/WootWriter/CopilotReplyBottomPanel.vue';
+import FluxSmsCounter from 'dashboard/components/widgets/conversation/FluxSmsCounter.vue';
 
 const props = defineProps({
+  accountId: { type: Number, default: null },
   contacts: { type: Array, default: () => [] },
   contactId: { type: String, default: null },
   selectedContact: { type: Object, default: null },
@@ -62,6 +64,17 @@ const showContactsDropdown = ref(false);
 const showInboxesDropdown = ref(false);
 const showCcEmailsDropdown = ref(false);
 const showBccEmailsDropdown = ref(false);
+const fluxSmsValidation = ref(null);
+
+const isFluxSms = computed(
+  () =>
+    props.targetInbox?.channelType === INBOX_TYPES.SMS &&
+    props.targetInbox?.provider === 'flux'
+);
+const fluxSmsVariables = computed(() => ({
+  contact: props.selectedContact,
+  agent: props.currentUser,
+}));
 
 const isCreating = computed(() => props.contactConversationsUiFlags.isCreating);
 
@@ -72,6 +85,20 @@ const state = props.formState || {
   bccEmails: '',
   attachedFiles: [],
 };
+
+const isFluxSmsValid = computed(() => {
+  const result = fluxSmsValidation.value;
+  return (
+    result?.status === 'ready' &&
+    result.valid &&
+    result.content === state.message &&
+    result.inboxId === props.targetInbox?.id &&
+    result.contactId === props.selectedContact?.id &&
+    result.accountId === props.accountId &&
+    result.sourceId === (props.targetInbox?.sourceId || null) &&
+    result.variablesKey === JSON.stringify(fluxSmsVariables.value)
+  );
+});
 
 const inboxTypes = computed(() => ({
   isEmail: props.targetInbox?.channelType === INBOX_TYPES.EMAIL,
@@ -290,8 +317,14 @@ const clearForm = () => {
 };
 
 const handleSendMessage = async () => {
+  if (isCreating.value || (isFluxSms.value && !isFluxSmsValid.value)) return;
   const isValid = await v$.value.$validate();
-  if (!isValid) return;
+  if (
+    !isValid ||
+    isCreating.value ||
+    (isFluxSms.value && !isFluxSmsValid.value)
+  )
+    return;
 
   try {
     const success = await emit('createConversation', {
@@ -363,6 +396,7 @@ useKeyboardEvents({
 
 <template>
   <div
+    data-testid="compose-conversation-form"
     class="w-full md:w-[42rem] divide-y divide-n-strong overflow-visible transition-all duration-300 ease-in-out top-full flex flex-col bg-n-alpha-3 border border-n-strong shadow-sm backdrop-blur-[100px] rounded-xl min-w-0 max-h-[calc(100vh-8rem)]"
   >
     <div class="flex-1 overflow-y-auto divide-y divide-n-strong">
@@ -428,6 +462,19 @@ useKeyboardEvents({
       />
     </div>
 
+    <FluxSmsCounter
+      v-if="isFluxSms && selectedContact && !isCopilotActive"
+      :content="state.message"
+      :account-id="accountId"
+      :inbox-id="targetInbox.id"
+      :contact-id="selectedContact.id"
+      :source-id="targetInbox.sourceId"
+      :variables="fluxSmsVariables"
+      :limit="targetInbox.smsCharacterLimit"
+      class="shrink-0"
+      @validation="fluxSmsValidation = $event"
+    />
+
     <CopilotReplyBottomPanel
       v-if="isCopilotActive"
       :is-generating-content="copilot.isButtonDisabled.value"
@@ -446,7 +493,7 @@ useKeyboardEvents({
       :channel-type="inboxChannelType"
       :voice-enabled="voiceCallEnabled"
       :is-loading="isCreating"
-      :disable-send-button="isCreating"
+      :disable-send-button="isCreating || (isFluxSms && !isFluxSmsValid)"
       :has-selected-inbox="!!targetInbox"
       :inbox-id="targetInbox?.id"
       :has-no-inbox="showNoInboxAlert"

@@ -11,6 +11,14 @@ class Inboxes extends CacheEnabledApiClient {
     return 'inbox';
   }
 
+  validateCacheKey(newKey) {
+    return super.validateCacheKey(`${newKey}:sms-character-limit-v1`);
+  }
+
+  refetchAndCommit(newKey = null) {
+    return super.refetchAndCommit(`${newKey}:sms-character-limit-v1`);
+  }
+
   getCampaigns(inboxId) {
     return axios.get(`${this.url}/${inboxId}/campaigns`);
   }

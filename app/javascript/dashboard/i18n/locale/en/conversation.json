@@ -2,6 +2,7 @@
   "CONVERSATION": {
     "MESSAGE_LOAD_ERROR": "Could not load messages.",
     "FLUX_SMS_LIMIT": {
+      "UNAVAILABLE_CONVERSATION": "The SMS length cannot be confirmed before creating the conversation: the message uses the new conversation ID. Remove that variable to validate and send.",
       "CHECKING": "Checking SMS length…",
       "CHECK_ERROR": "Could not check the SMS length. Try again before sending.",
       "RETRY": "Try again",
@@ -12,7 +13,7 @@
       "EXCEEDED": "Message exceeds the {limit}-character limit. Shorten the text to send.",
       "REMOVE": "Characters to remove: {count}."
     },
-    "FLUX_SENT_PENDING": "Request sent to Flux; awaiting delivery confirmation.",
+    "FLUX_SENT_PENDING": "Awaiting delivery confirmation",
     "FLUX_FAILURE": {
       "LABEL": "Failed — {reason}",
       "RETRY_HINT": "Check the result in Flux before creating a new SMS to avoid duplicate delivery.",

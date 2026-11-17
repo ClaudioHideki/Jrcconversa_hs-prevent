@@ -158,6 +158,7 @@ Rails.application.routes.draw do
               get :search
               get :unread_counts, to: 'conversations/unread_counts#index'
               post :filter
+              post :sms_preview, to: 'conversations/sms_previews#create'
             end
             scope module: :conversations do
               resources :messages, only: [:index, :create, :destroy, :update] do

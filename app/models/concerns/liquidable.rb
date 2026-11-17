@@ -8,10 +8,12 @@ module Liquidable
 
   # Resolve without saving or running callbacks. SMS preflight and the existing
   # before_create callback use the same Liquid parser, drops and code protection.
-  def rendered_liquid_content
+  def rendered_liquid_content(conversation_drop: nil)
     return content unless liquid_processable_message?
 
-    Liquid::Template.parse(modified_liquid_content).render(message_drops)
+    drops = message_drops
+    drops['conversation'] = conversation_drop if conversation_drop
+    Liquid::Template.parse(modified_liquid_content).render(drops)
   rescue Liquid::Error
     content
   end

@@ -17,7 +17,7 @@ permissions:
 jobs:
   validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,6 +53,8 @@ jobs:
           pnpm exec vite build > tmp/ci-evidence/frontend-build.log 2>&1
       - name: Verify immutable publication guard
         run: python3 .github/scripts/test_publish_guard.py
+      - name: Chrome validation against isolated Rails runtime
+        run: bash .github/scripts/test_browser.sh
       - name: Record the tested source and independently built SDK
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

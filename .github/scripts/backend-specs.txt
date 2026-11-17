@@ -5,6 +5,7 @@ spec/services/sms/flux_message_length_spec.rb
 spec/validators/flux_sms_length_validator_spec.rb
 spec/controllers/api/v1/accounts/conversations/flux_sms_limits_spec.rb
 spec/controllers/api/v1/accounts/conversations/flux_sms_preview_spec.rb
+spec/controllers/api/v1/accounts/conversations/new_flux_sms_preview_spec.rb
 spec/controllers/api/v1/accounts/conversations/messages_controller_spec.rb
 spec/services/sms/send_on_sms_service_spec.rb
 spec/services/sms/delivery_status_service_spec.rb

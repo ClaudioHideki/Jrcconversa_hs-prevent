@@ -98,6 +98,15 @@ class MessageApi extends ApiClient {
     });
   }
 
+  previewNewSms({ inboxId, contactId, sourceId, content }) {
+    return axios.post(`${this.url}/sms_preview`, {
+      inbox_id: inboxId,
+      contact_id: contactId,
+      source_id: sourceId,
+      content,
+    });
+  }
+
   retry(conversationID, messageId) {
     return axios.post(
       `${this.url}/${conversationID}/messages/${messageId}/retry`

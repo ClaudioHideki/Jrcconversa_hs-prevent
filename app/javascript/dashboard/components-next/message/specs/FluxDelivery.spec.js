@@ -60,8 +60,8 @@ describe('Flux delivery and rejection display', () => {
     const wrapper = mount(MessageMeta, options());
     expect(wrapper.getComponent(MessageStatus).props('status')).toBe('sent');
     expect(wrapper.find('[data-icon="i-lucide-check"]').exists()).toBe(true);
-    expect(wrapper.getComponent(MessageStatus).props('sentTooltip')).toContain(
-      'aguardando confirmação'
+    expect(wrapper.getComponent(MessageStatus).props('sentTooltip')).toBe(
+      'Aguardando confirmação de entrega'
     );
     context.status.value = 'delivered';
     await wrapper.vm.$nextTick();

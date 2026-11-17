@@ -5,6 +5,11 @@ app/jobs/application_job.rb
 lib/sensitive_job_error_logger.rb
 config/initializers/sidekiq.rb
 app/controllers/webhooks/flux_controller.rb
+app/controllers/api/v1/accounts/conversations/sms_previews_controller.rb
+app/drops/flux_preview_conversation_drop.rb
+app/models/concerns/liquidable.rb
+app/services/sms/flux_message_preview.rb
+spec/controllers/api/v1/accounts/conversations/new_flux_sms_preview_spec.rb
 spec/services/twilio/delivery_status_service_spec.rb
 spec/jobs/application_job_logging_spec.rb
 spec/lib/sensitive_job_error_logger_spec.rb

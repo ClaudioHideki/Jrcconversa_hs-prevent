@@ -5,10 +5,13 @@ import MessageApi from 'dashboard/api/inbox/message';
 
 const props = defineProps({
   content: { type: String, required: true },
-  conversationId: { type: [Number, String], required: true },
+  conversationId: { type: [Number, String], default: null },
+  inboxId: { type: Number, default: null },
+  contactId: { type: [Number, String], default: null },
+  sourceId: { type: String, default: null },
   accountId: { type: Number, required: true },
   variables: { type: Object, default: () => ({}) },
-  limit: { type: Number, required: true },
+  limit: { type: Number, default: null },
 });
 const emit = defineEmits(['validation']);
 const { t } = useI18n();
@@ -25,7 +28,9 @@ function publish(snapshot, nextStatus, data = null) {
 
 async function fetchPreview(snapshot, request) {
   try {
-    const { data } = await MessageApi.previewSms(snapshot);
+    const { data } = await (snapshot.conversationId
+      ? MessageApi.previewSms(snapshot)
+      : MessageApi.previewNewSms(snapshot));
     if (request === revision) publish(snapshot, 'ready', data);
   } catch {
     if (request === revision) publish(snapshot, 'error');
@@ -40,9 +45,16 @@ function validate(immediate = false) {
     conversationId: props.conversationId,
     accountId: props.accountId,
     content: props.content,
+    inboxId: props.inboxId,
+    variablesKey: JSON.stringify(props.variables),
   };
+  if (!props.conversationId) {
+    snapshot.inboxId = props.inboxId;
+    snapshot.contactId = props.contactId;
+    snapshot.sourceId = props.sourceId;
+  }
   publish(snapshot, 'pending');
-  if (props.content === '') {
+  if (props.content === '' && Number.isFinite(props.limit)) {
     publish(snapshot, 'ready', {
       length: 0,
       limit: props.limit,
@@ -61,6 +73,9 @@ watch(
   [
     () => props.content,
     () => props.conversationId,
+    () => props.inboxId,
+    () => props.contactId,
+    () => props.sourceId,
     () => props.accountId,
     () => props.limit,
     () => props.variables,
@@ -97,6 +112,9 @@ defineExpose({ refresh: () => validate(true) });
         {{ t('CONVERSATION.FLUX_SMS_LIMIT.RETRY') }}
       </button>
     </template>
+    <p v-else-if="result?.reason === 'conversation_not_created'">
+      {{ t('CONVERSATION.FLUX_SMS_LIMIT.UNAVAILABLE_CONVERSATION') }}
+    </p>
     <template v-else>
       <span class="font-medium">{{
         `${result.length} / ${result.limit}`
