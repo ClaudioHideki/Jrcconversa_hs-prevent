@@ -99,6 +99,16 @@ RSpec.describe 'New Flux SMS conversation preflight API', type: :request do
     expect(response.parsed_body).to include('length' => conversation.display_id.to_s.length, 'valid' => true)
   end
 
+  it 'preserves the original Liquid drop string representation at the 160 boundary' do
+    text = "#{'a' * (160 - ConversationDrop.name.length)}{{conversation}}"
+    post url, params: params.merge(content: text), headers: headers, as: :json
+    expect(response.parsed_body).to include('length' => 160, 'valid' => true)
+    post "/api/v1/accounts/#{account.id}/conversations",
+         params: params.merge(assignee_id: agent.id, message: { content: text }), headers: headers, as: :json
+    expect(response).to have_http_status(:success)
+    expect(Message.outgoing.last.outgoing_content.length).to eq(160)
+  end
+
   it 'requires authentication' do
     post url, params: params, as: :json
     expect(response).to have_http_status(:unauthorized)

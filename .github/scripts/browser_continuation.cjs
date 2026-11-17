@@ -14,15 +14,16 @@ async function waitFor(check, description) {
 }
 async function setMessage(editor, counter, text) {
   await editor.click();
-  await editor.press('Control+A');
-  await editor.press('Backspace');
+  await editor.fill('');
   await waitFor(async () => (await counter.innerText()).includes('0 / 160'), 'empty counter');
-  const responsePromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST');
-  await editor.fill(text);
+  const responsePromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST' && response.request().postDataJSON().content === text);
+  if (text.includes('{{')) await editor.pressSequentially(text, { delay: 2 });
+  else await editor.fill(text);
   const response = await responsePromise;
   assert.equal(response.status(), 200);
   const result = await response.json();
   await waitFor(async () => result.reason ? (await counter.innerText()).includes('Não é possível confirmar') : (await counter.innerText()).includes(`${result.length} / ${result.limit}`), 'server preview');
+  return response.request().postDataJSON().content;
 }
 async function test(name, fn) {
   await fn();
@@ -75,10 +76,12 @@ async function test(name, fn) {
     for (const code of [422, 429, 500, 'network']) {
       await test(`Reply draft survives ${code}`, async () => {
         failure = code;
-        await setMessage(editor, counter, '{{contact.first_name | truncate: 5}}');
+        const source = await setMessage(editor, counter, 'Olá {{agent.name}}');
+        const refreshPromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST');
         await send.click();
+        const refresh = await refreshPromise;
+        assert.equal(refresh.request().postDataJSON().content, source);
         await waitFor(async () => !(await send.isDisabled()), 'failed request released');
-        assert.ok((await editor.innerText()).includes('{{contact.first_name'));
       });
     }
     await test('Actual isolated DLR updates database and UI to two checks', async () => {
@@ -146,12 +149,14 @@ async function test(name, fn) {
     for (const code of [422, 429, 500, 'network']) {
       await test(`New conversation preserves draft after ${code}`, async () => {
         failure = code;
-        await setMessage(editor, counter, '{{contact.first_name | truncate: 5}}');
+        const source = await setMessage(editor, counter, 'Olá {{agent.name}}');
         const before = newSends;
+        const refreshPromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST');
         await send.click();
         await editor.press('Control+Enter');
+        const refresh = await refreshPromise;
+        assert.equal(refresh.request().postDataJSON().content, source);
         await waitFor(async () => !(await send.isDisabled()), 'creation error released');
-        assert.ok((await editor.innerText()).includes('{{contact.first_name'));
         assert.equal(newSends, before + 1);
       });
     }

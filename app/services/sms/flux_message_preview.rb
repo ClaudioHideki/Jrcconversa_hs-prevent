@@ -10,9 +10,10 @@ class Sms::FluxMessagePreview
       account: @conversation.account, inbox: @conversation.inbox, sender: @sender,
       content: @content, message_type: :outgoing, content_type: :text, private: false
     )
-    conversation_drop = FluxPreviewConversationDrop.new(@conversation)
+    unavailable = false
+    conversation_drop = FluxPreviewConversationDrop.new(@conversation, on_unavailable: -> { unavailable = true })
     message.content = message.rendered_liquid_content(conversation_drop: conversation_drop)
-    if conversation_drop.unavailable
+    if unavailable
       return { limit: Sms::FluxMessageLength.limit_for(@conversation.inbox.channel), valid: false, reason: 'conversation_not_created' }
     end
 
