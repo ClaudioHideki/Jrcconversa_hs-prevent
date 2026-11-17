@@ -7,7 +7,7 @@ class Api::V1::Accounts::Conversations::SmsPreviewsController < Api::V1::Account
 
     contact = Current.account.contacts.find(params[:contact_id])
     authorize contact, :show?
-    content = params.permit(:content).fetch(:content)
+    content = params[:content]
     return head :bad_request unless content.is_a?(String) && content.length <= 150_000
 
     source_id = params.permit(:source_id)[:source_id].presence || contact.phone_number

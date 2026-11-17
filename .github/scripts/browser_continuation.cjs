@@ -155,6 +155,15 @@ async function test(name, fn) {
         assert.equal(newSends, before + 1);
       });
     }
+    await test('New conversation clears only after actual isolated HTTP success', async () => {
+      await context.unroute('**/conversations');
+      await setMessage(editor, counter, 'Sucesso fictício sem envio ao provedor');
+      const responsePromise = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/conversations') && response.request().method() === 'POST');
+      await send.click();
+      const response = await responsePromise;
+      assert.ok(response.status() >= 200 && response.status() < 300);
+      await popup.waitFor({ state: 'hidden' });
+    });
     assert.deepEqual(errors, []);
   } catch (error) {
     results.push({ name: 'Browser suite', status: 'FAIL', error: error.stack });
