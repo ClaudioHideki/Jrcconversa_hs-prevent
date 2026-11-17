@@ -4,6 +4,7 @@ app/javascript/dashboard/api/inboxes.js
 app/javascript/dashboard/components-next/NewConversation/ComposeConversation.vue
 app/javascript/dashboard/components-next/NewConversation/components/ComposeNewConversationForm.vue
 app/javascript/dashboard/components-next/NewConversation/components/specs/FluxSmsCompose.spec.js
+app/javascript/dashboard/components-next/NewConversation/components/specs/FluxSmsDraft.spec.js
 app/javascript/dashboard/components/widgets/conversation/ReplyBox.vue
 app/javascript/dashboard/components/widgets/conversation/specs/FluxSmsCounter.spec.js
 app/javascript/dashboard/api/specs/inbox/message.spec.js

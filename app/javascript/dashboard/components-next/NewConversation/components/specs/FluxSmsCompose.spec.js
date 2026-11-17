@@ -135,6 +135,31 @@ describe('New conversation Flux SMS guard', () => {
     expect(state.message).toBe('SMS');
   });
 
+  it('revalidates the unchanged source text after an API refusal revision', async () => {
+    MessageApi.previewNewSms.mockResolvedValueOnce({
+      data: { length: 3, limit: 160, excess: 0, empty: false, valid: true },
+    });
+    state.message = '{{contact.name}}';
+    await vi.advanceTimersByTimeAsync(200);
+    MessageApi.previewNewSms.mockResolvedValueOnce({
+      data: { length: 161, limit: 160, excess: 1, empty: false, valid: false },
+    });
+    await wrapper.setProps({ smsPreviewRevision: 1 });
+    expect(
+      wrapper
+        .findComponent({ name: 'ActionButtons' })
+        .props('disableSendButton')
+    ).toBe(true);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(wrapper.text()).toContain('161 / 160');
+    expect(
+      wrapper
+        .findComponent({ name: 'ActionButtons' })
+        .props('disableSendButton')
+    ).toBe(true);
+    expect(state.message).toBe('{{contact.name}}');
+  });
+
   it('preserves Carta 1280 and hides the Flux guard for other channels', async () => {
     await wrapper.setProps({
       targetInbox: {

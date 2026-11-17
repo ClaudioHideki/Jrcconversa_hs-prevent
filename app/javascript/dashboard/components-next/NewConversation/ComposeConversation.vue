@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted, watch } from 'vue';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useUISettings } from 'dashboard/composables/useUISettings';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { useAlert } from 'dashboard/composables';
 import { ExceptionWithMessage } from 'shared/helpers/CustomErrors';
 import { debounce } from '@chatwoot/utils';
@@ -45,6 +46,7 @@ const targetInbox = ref(null);
 const isCreatingContact = ref(false);
 const isFetchingInboxes = ref(false);
 const isSearching = ref(false);
+const smsPreviewRevision = ref(0);
 
 const formState = reactive({
   message: '',
@@ -169,6 +171,15 @@ const discardCompose = () => {
 
 const createConversation = async ({ payload, isFromWhatsApp }) => {
   if (uiFlags.value.isCreating) return false;
+  const fluxDraft =
+    targetInbox.value?.channelType === INBOX_TYPES.SMS &&
+    targetInbox.value?.provider === 'flux'
+      ? {
+          message: formState.message,
+          contactId: selectedContact.value?.id,
+          inboxId: targetInbox.value.id,
+        }
+      : null;
   try {
     const data = await store.dispatch('contactConversations/create', {
       params: payload,
@@ -179,10 +190,18 @@ const createConversation = async ({ payload, isFromWhatsApp }) => {
       to: `/app/accounts/${data.account_id}/conversations/${data.id}`,
       message: t('COMPOSE_NEW_CONVERSATION.FORM.GO_TO_CONVERSATION'),
     };
-    discardCompose();
+    if (
+      !fluxDraft ||
+      (formState.message === fluxDraft.message &&
+        selectedContact.value?.id === fluxDraft.contactId &&
+        targetInbox.value?.id === fluxDraft.inboxId)
+    ) {
+      discardCompose();
+    }
     useAlert(t('COMPOSE_NEW_CONVERSATION.FORM.SUCCESS_MESSAGE'), action);
     return true; // Return success
   } catch (error) {
+    if (fluxDraft) smsPreviewRevision.value += 1;
     useAlert(
       error instanceof ExceptionWithMessage
         ? error.data
@@ -246,6 +265,7 @@ onMounted(() => resetContacts());
     <template #content>
       <ComposeNewConversationForm
         :account-id="accountId"
+        :sms-preview-revision="smsPreviewRevision"
         :form-state="formState"
         :contacts="contacts"
         :contact-id="contactId"

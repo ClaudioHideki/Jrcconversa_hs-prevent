@@ -155,6 +155,24 @@ async function test(name, fn) {
         assert.equal(newSends, before + 1);
       });
     }
+    await test('New conversation preserves edits made before an earlier HTTP success', async () => {
+      await context.unroute('**/conversations');
+      await context.route('**/conversations', async route => {
+        if (route.request().method() !== 'POST') return route.continue();
+        const response = await route.fetch({ maxRedirects: 0 });
+        await sleep(900);
+        return route.fulfill({ response });
+      });
+      await setMessage(editor, counter, 'Primeiro texto fictício');
+      const responsePromise = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/conversations') && response.request().method() === 'POST');
+      await send.click();
+      await editor.fill('Rascunho novo enquanto envia');
+      const response = await responsePromise;
+      assert.ok(response.status() >= 200 && response.status() < 300);
+      await waitFor(async () => !(await send.isDisabled()), 'creation completed with a new draft');
+      assert.equal(await popup.isVisible(), true);
+      assert.ok((await editor.innerText()).includes('Rascunho novo enquanto envia'));
+    });
     await test('New conversation clears only after actual isolated HTTP success', async () => {
       await context.unroute('**/conversations');
       await setMessage(editor, counter, 'Sucesso fictício sem envio ao provedor');

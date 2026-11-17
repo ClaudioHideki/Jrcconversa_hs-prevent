@@ -11,6 +11,7 @@ app/javascript/dashboard/components/widgets/conversation/specs/FluxSmsCounter.sp
 app/javascript/dashboard/components/widgets/conversation/specs/ReplyBoxFluxSms.spec.js
 app/javascript/dashboard/components-next/NewConversation/helpers/specs/composeConversationHelper.spec.js
 app/javascript/dashboard/components-next/NewConversation/components/specs/FluxSmsCompose.spec.js
+app/javascript/dashboard/components-next/NewConversation/components/specs/FluxSmsDraft.spec.js
 app/javascript/dashboard/helper/specs/conversationHelper.spec.js
 app/javascript/dashboard/helper/specs/editorHelper.spec.js
 app/javascript/dashboard/helper/specs/inbox.spec.js

@@ -7,9 +7,11 @@ network="jrc-$suffix"
 pg="jrc-pg-$suffix"
 redis="jrc-redis-$suffix"
 web="jrc-web-$suffix"
+relay="jrc-relay-$suffix"
 cleanup() {
   docker logs "$web" > "$out/browser-server.log" 2>&1 || true
-  docker rm -f -v "$web" "$pg" "$redis" >/dev/null 2>&1 || true
+  docker logs "$relay" > "$out/browser-relay.log" 2>&1 || true
+  docker rm -f -v "$relay" "$web" "$pg" "$redis" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -30,7 +32,12 @@ args=(--network "$network" --mount "type=bind,source=$GITHUB_WORKSPACE,target=/a
   -e RAILS_LOG_TO_STDOUT=true -e LOG_LEVEL=warn)
 docker run --rm "${args[@]}" jrc-validation-runtime bundle exec rails db:schema:load > "$out/browser-schema.log" 2>&1
 docker run --rm "${args[@]}" jrc-validation-runtime bundle exec rails runner .github/scripts/seed_browser.rb > "$out/browser-seed.log" 2>&1
-docker run -d --name "$web" "${args[@]}" --publish 127.0.0.1:18417:3000 jrc-validation-runtime bundle exec rails s -b 0.0.0.0 -p 3000 >/dev/null
+docker run -d --name "$web" "${args[@]}" --network-alias web jrc-validation-runtime bundle exec rails s -b 0.0.0.0 -p 3000 >/dev/null
+docker run -d --name "$relay" --network "$network" --publish 127.0.0.1:18417:18417 \
+  --mount "type=bind,source=$GITHUB_WORKSPACE,target=/app,readonly" -e GITHUB_ACTIONS=true \
+  jrc-validation-runtime ruby .github/scripts/browser_relay.rb >/dev/null
+docker network connect bridge "$relay"
+docker inspect "$web" --format '{{json .NetworkSettings.Networks}}' > "$out/browser-web-network.json"
 ready=false
 for attempt in {1..90}; do
   if curl --fail --silent http://127.0.0.1:18417/app/login >/dev/null; then ready=true; break; fi

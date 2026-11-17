@@ -30,6 +30,7 @@ import FluxSmsCounter from 'dashboard/components/widgets/conversation/FluxSmsCou
 
 const props = defineProps({
   accountId: { type: Number, default: null },
+  smsPreviewRevision: { type: Number, default: 0 },
   contacts: { type: Array, default: () => [] },
   contactId: { type: String, default: null },
   selectedContact: { type: Object, default: null },
@@ -74,6 +75,7 @@ const isFluxSms = computed(
 const fluxSmsVariables = computed(() => ({
   contact: props.selectedContact,
   agent: props.currentUser,
+  revision: props.smsPreviewRevision,
 }));
 
 const isCreating = computed(() => props.contactConversationsUiFlags.isCreating);
