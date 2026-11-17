@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import MessageMeta from '../MessageMeta.vue';
 import MessageStatus from '../MessageStatus.vue';
 import MessageError from '../MessageError.vue';
+import BaseBubble from '../bubbles/Base.vue';
+import { MESSAGE_VARIANTS } from '../constants';
 import { fluxFailureReason } from '../fluxFailureReason';
 import { useMessageContext } from '../provider';
 import { useInbox } from 'dashboard/composables/useInbox';
@@ -15,6 +17,7 @@ describe('Flux delivery and rejection display', () => {
   let channels;
   const options = () => ({
     global: {
+      directives: { 'dompurify-html': vi.fn() },
       stubs: { Icon: { props: ['icon'], template: '<i :data-icon="icon" />' } },
     },
   });
@@ -32,6 +35,12 @@ describe('Flux delivery and rejection display', () => {
       attachments: ref([]),
       contentAttributes: ref({ fluxPartnerId: 'JRC-SMS-1' }),
       isFluxSms: ref(true),
+      variant: ref(MESSAGE_VARIANTS.AGENT),
+      inReplyTo: ref(null),
+      shouldGroupWithNext: ref(true),
+      id: ref(1),
+      sender: ref(null),
+      senderType: ref(null),
     };
     channels = Object.fromEntries(
       [
@@ -90,6 +99,33 @@ describe('Flux delivery and rejection display', () => {
       'progress'
     );
   });
+
+  it('keeps each grouped outgoing Flux SMS state visible', () => {
+    context.contentAttributes.value = { fluxStatus: 'EM ANALISE' };
+    const wrapper = mount(BaseBubble, options());
+    expect(wrapper.get('[data-testid="flux-delivery-label"]').text()).toBe(
+      'Em análise na Flux'
+    );
+  });
+
+  it.each(['other-channel', 'incoming', 'private', 'deleted', 'hidden'])(
+    'preserves grouped metadata suppression for %s',
+    kind => {
+      if (kind === 'other-channel') context.isFluxSms.value = false;
+      if (kind === 'incoming') context.messageType.value = 0;
+      if (kind === 'private') {
+        context.variant.value = MESSAGE_VARIANTS.PRIVATE;
+        context.isPrivate.value = true;
+      }
+      if (kind === 'deleted')
+        context.contentAttributes.value = { deleted: true };
+      const wrapper = mount(BaseBubble, {
+        ...options(),
+        props: { hideMeta: kind === 'hidden' },
+      });
+      expect(wrapper.findComponent(MessageMeta).exists()).toBe(false);
+    }
+  );
 
   it.each([
     ['EM ANALISE', 'Em análise na Flux'],

@@ -10,7 +10,12 @@ import { useI18n } from 'vue-i18n';
 
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
-import { MESSAGE_VARIANTS, ORIENTATION, SENDER_TYPES } from '../constants';
+import {
+  MESSAGE_TYPES,
+  MESSAGE_VARIANTS,
+  ORIENTATION,
+  SENDER_TYPES,
+} from '../constants';
 
 const props = defineProps({
   hideMeta: { type: Boolean, default: false },
@@ -24,6 +29,9 @@ const {
   id,
   sender,
   senderType,
+  isFluxSms,
+  messageType,
+  contentAttributes,
 } = useMessageContext();
 const { t } = useI18n();
 
@@ -92,10 +100,18 @@ const scrollToMessage = () => {
   });
 };
 
+const showFluxDeliveryMeta = computed(
+  () =>
+    isFluxSms.value &&
+    variant.value !== MESSAGE_VARIANTS.PRIVATE &&
+    !contentAttributes.value?.deleted &&
+    [MESSAGE_TYPES.OUTGOING, MESSAGE_TYPES.TEMPLATE].includes(messageType.value)
+);
+
 const shouldShowMeta = computed(
   () =>
     !props.hideMeta &&
-    !shouldGroupWithNext.value &&
+    (!shouldGroupWithNext.value || showFluxDeliveryMeta.value) &&
     variant.value !== MESSAGE_VARIANTS.ACTIVITY
 );
 
@@ -109,6 +125,8 @@ const replyToPreview = computed(() => {
     const firstAttachment = attachments[0];
     const fileType = firstAttachment.fileType ?? firstAttachment.file_type;
 
+    // Existing attachment translations are selected by attachment type.
+    // eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys
     return t(`CHAT_LIST.ATTACHMENTS.${fileType}.CONTENT`);
   }
 

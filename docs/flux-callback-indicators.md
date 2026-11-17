@@ -44,6 +44,8 @@ O rodape de SMS Flux mostra o ultimo estado recebido por callback:
 - `BLOQUEADA`, `NAO ENTREGUE` e demais falhas: motivo existente de falha, sem dois riscos.
 
 Estados privados, mensagens recebidas e outros canais nao recebem esse rotulo.
+Cada SMS Flux de saida conserva seu indicador mesmo quando a conversa agrupa
+mensagens consecutivas; o agrupamento dos outros canais permanece igual.
 Metadados com `ENTREGUE` sozinhos nao forcam entrega nem leitura na interface.
 
 ## Limites da homologacao

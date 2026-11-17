@@ -10,6 +10,7 @@ app/javascript/dashboard/components/widgets/conversation/specs/FluxSmsCounter.sp
 app/javascript/dashboard/api/specs/inbox/message.spec.js
 app/javascript/dashboard/components/widgets/conversation/FluxSmsCounter.vue
 app/javascript/dashboard/components-next/message/MessageMeta.vue
+app/javascript/dashboard/components-next/message/bubbles/Base.vue
 app/javascript/dashboard/components-next/message/MessageError.vue
 app/javascript/dashboard/components-next/message/fluxFailureReason.js
 app/javascript/dashboard/components-next/message/specs/FluxDelivery.spec.js
