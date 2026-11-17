@@ -109,6 +109,16 @@ RSpec.describe 'New Flux SMS conversation preflight API', type: :request do
     expect(Message.outgoing.last.outgoing_content.length).to eq(160)
   end
 
+  it 'does not reuse an inconsistently linked conversation from another account' do
+    inbox.update!(lock_to_single_conversation: true)
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: contact.phone_number)
+    foreign = create(:account, name: 'FOREIGN ACCOUNT PRIVATE NAME')
+    create(:conversation, account: foreign, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+    post url, params: params.merge(content: '{{account.name}}'), headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    expect(response.body).not_to include('FOREIGN')
+  end
+
   it 'requires authentication' do
     post url, params: params, as: :json
     expect(response).to have_http_status(:unauthorized)

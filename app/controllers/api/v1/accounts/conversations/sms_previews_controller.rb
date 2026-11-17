@@ -20,10 +20,16 @@ class Api::V1::Accounts::Conversations::SmsPreviewsController < Api::V1::Account
   end
 
   def preview_conversation
+    conversation = locked_conversation if inbox.lock_to_single_conversation?
+    conversation || Current.account.conversations.build(inbox: inbox, contact: contact, assignee: Current.user)
+  end
+
+  def locked_conversation
     source_id = params.permit(:source_id)[:source_id].presence || contact.phone_number
     contact_inbox = contact.contact_inboxes.find_by(inbox: inbox, source_id: source_id)
-    conversation = contact_inbox&.conversations&.last if inbox.lock_to_single_conversation?
-    authorize conversation, :show? if conversation
-    conversation || Current.account.conversations.build(inbox: inbox, contact: contact, assignee: Current.user)
+    existing = contact_inbox&.conversations&.last
+    return unless existing
+
+    Current.account.conversations.where(inbox: inbox, contact: contact).find(existing.id).tap { |record| authorize record, :show? }
   end
 end

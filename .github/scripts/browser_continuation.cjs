@@ -5,16 +5,28 @@ const { chromium } = require(process.env.JRC_PLAYWRIGHT_MODULE);
 const out = path.resolve('tmp/ci-evidence');
 const fixture = JSON.parse(fs.readFileSync(path.join(out, 'browser-fixtures.json'), 'utf8'));
 const origin = 'http://127.0.0.1:18417';
-const results = [], errors = [];
+const results = [], errors = [], editorActions = [];
 let page, context;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitFor(check, description) {
   for (let i = 0; i < 160; i++) { if (await check()) return; await sleep(100); }
   throw new Error(`Timed out: ${description}`);
 }
-async function setMessage(editor, counter, text) {
+async function clearEditor(editor) {
   await editor.click();
-  await editor.fill('');
+  await editor.press('Escape');
+  await editor.press('Control+Home');
+  await editor.press('Control+Shift+End');
+  const selected = await editor.evaluate(node => ({
+    beforeLength: node.innerText.length,
+    selectedLength: window.getSelection().toString().length,
+    focused: document.activeElement === node,
+  }));
+  await editor.press('Backspace');
+  editorActions.push({ ...selected, afterLength: await editor.innerText().then(text => text.length) });
+}
+async function setMessage(editor, counter, text) {
+  await clearEditor(editor);
   await waitFor(async () => (await counter.innerText()).includes('0 / 160'), 'empty counter');
   const responsePromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST' && response.request().postDataJSON().content === text);
   if (text.includes('{{')) await editor.pressSequentially(text, { delay: 2 });
@@ -171,6 +183,7 @@ async function test(name, fn) {
       await setMessage(editor, counter, 'Primeiro texto fictício');
       const responsePromise = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/conversations') && response.request().method() === 'POST');
       await send.click();
+      await clearEditor(editor);
       await editor.fill('Rascunho novo enquanto envia');
       const response = await responsePromise;
       assert.ok(response.status() >= 200 && response.status() < 300);
@@ -197,6 +210,7 @@ async function test(name, fn) {
     throw error;
   } finally {
     fs.writeFileSync(path.join(out, 'browser-results.json'), JSON.stringify({ results, errors, runtime: await browser.version(), isolated: true, realSmsSent: 0 }, null, 2));
+    fs.writeFileSync(path.join(out, 'browser-editor-actions.json'), JSON.stringify(editorActions, null, 2));
     await browser.close();
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
