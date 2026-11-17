@@ -23,7 +23,7 @@ Antes de configurar essa variavel em uma futura publicacao autorizada:
 - Conferir a configuracao tanto no Rails quanto no Sidekiq da mesma instalacao.
   Nao apontar callbacks do laboratorio para producao.
 
-O provedor recusa a tentativa antes de qualquer HTTP de envio se a URL for
+O adaptador de envio do JRC recusa a tentativa antes de qualquer HTTP se a URL for
 longa, malformada ou perder o parametro de autenticacao. O erro nao inclui
 o token nem a URL completa. O texto da mensagem e preservado; nao ha reenvio
 automatico. HTTPS deve ser usado no endereco publico; HTTP continua aceito
@@ -50,6 +50,9 @@ Metadados com `ENTREGUE` sozinhos nao forcam entrega nem leitura na interface.
 
 Os testes usam contas e mensagens sinteticas, HTTP bloqueado ou WebMock e
 redes/bancos isolados do GitHub Actions. Nenhum SMS real e enviado.
+O lint compara os dois arquivos legados Flux com o SHA publicado `7b3377f`.
+Infracoes novas ou metricas piores falham a validacao; infracoes preexistentes
+nao agravadas sao registradas separadamente, sem alterar os metodos antigos.
 Nao foi implementada consulta periodica de DLR; isso evita introduzir consultas
 automaticas ao provedor e o erro 910. Os indicadores dependem de callbacks reais.
 

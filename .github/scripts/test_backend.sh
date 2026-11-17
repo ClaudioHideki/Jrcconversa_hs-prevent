@@ -28,6 +28,7 @@ args=(--rm --network "$network" --mount "type=bind,source=$GITHUB_WORKSPACE,targ
 docker run "${args[@]}" jrc-validation-runtime bundle exec rails db:schema:load > "$out/schema.log" 2>&1
 mapfile -t specs < .github/scripts/backend-specs.txt
 docker run "${args[@]}" jrc-validation-runtime bundle exec rspec "${specs[@]}" --format progress > "$out/rspec.log" 2>&1
-mapfile -t files < .github/scripts/ruby-lint.txt
-docker run "${args[@]}" jrc-validation-runtime bundle exec rubocop "${files[@]}" > "$out/rubocop.log" 2>&1
+python3 .github/scripts/test_ruby_lint_regressions.py
+python3 .github/scripts/ruby_lint_regressions.py "$out" "${args[@]}"
+
 tail -n 6 "$out/rspec.log"
