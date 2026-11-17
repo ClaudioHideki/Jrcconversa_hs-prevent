@@ -13,17 +13,23 @@ async function waitFor(check, description) {
   throw new Error(`Timed out: ${description}`);
 }
 async function clearEditor(editor) {
-  await editor.click();
-  await editor.press('Escape');
-  await editor.press('Control+Home');
-  await editor.press('Control+Shift+End');
-  const selected = await editor.evaluate(node => ({
-    beforeLength: node.innerText.length,
-    selectedLength: window.getSelection().toString().length,
-    focused: document.activeElement === node,
-  }));
-  await editor.press('Backspace');
-  editorActions.push({ ...selected, afterLength: await editor.innerText().then(text => text.length) });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await editor.click();
+    await editor.press('Escape');
+    await editor.press('Control+Home');
+    await editor.press('Control+Shift+End');
+    await sleep(100);
+    const selected = await editor.evaluate(node => ({
+      beforeLength: node.innerText.length,
+      selectedLength: window.getSelection().toString().length,
+      focused: document.activeElement === node,
+    }));
+    await editor.press('Backspace');
+    await sleep(100);
+    const afterLength = await editor.innerText().then(text => text.length);
+    editorActions.push({ attempt, ...selected, afterLength });
+    if (afterLength <= 1) return;
+  }
 }
 async function setMessage(editor, counter, text) {
   await clearEditor(editor);
@@ -216,6 +222,37 @@ async function test(name, fn) {
     if (page) {
       await page.screenshot({ path: path.join(out, 'browser-failure.png'), fullPage: true }).catch(() => {});
       fs.writeFileSync(path.join(out, 'browser-failure-dom.txt'), await page.locator('body').innerText().catch(() => 'unavailable'));
+      const debug = await page.evaluate(() => {
+        const app = document.querySelector('[data-v-app]')?.__vue_app__;
+        const stack = [app?._container?._vnode];
+        const seen = new Set();
+        while (stack.length) {
+          const node = stack.pop();
+          if (!node || seen.has(node)) continue;
+          seen.add(node);
+          if (node.component) {
+            const vm = node.component.proxy;
+            if (typeof vm?.confirmOnSendReply === 'function') {
+              const validation = vm.fluxSmsValidation;
+              return {
+                messageLength: Array.from(vm.message || '').length, limit: vm.maxLength,
+                isFlux: vm.isFluxSmsReply, isSending: vm.isSendingCurrentDraft,
+                disabled: vm.isReplyButtonDisabled, validationStatus: validation?.status,
+                contentMatches: validation?.content === vm.message,
+                contextMatches: validation?.variablesKey === JSON.stringify(vm.messageVariables),
+                currentConversation: vm.conversationId, validationConversation: validation?.conversationId,
+                currentAccount: vm.accountId, validationAccount: validation?.accountId,
+                currentInbox: vm.inboxId, validationInbox: validation?.inboxId,
+              };
+            }
+            stack.push(node.component.subTree);
+          }
+          if (Array.isArray(node.children)) stack.push(...node.children);
+          if (node.suspense?.activeBranch) stack.push(node.suspense.activeBranch);
+        }
+        return { replyComponentFound: false };
+      }).catch(() => ({ debugUnavailable: true }));
+      fs.writeFileSync(path.join(out, 'browser-state-debug.json'), JSON.stringify(debug, null, 2));
     }
     throw error;
   } finally {
