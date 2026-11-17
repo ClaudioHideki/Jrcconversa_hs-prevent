@@ -13,9 +13,7 @@ class Sms::FluxMessagePreview
     unavailable = false
     conversation_drop = FluxPreviewConversationDrop.new(@conversation, on_unavailable: -> { unavailable = true })
     message.content = message.rendered_liquid_content(conversation_drop: conversation_drop)
-    if unavailable
-      return { limit: Sms::FluxMessageLength.limit_for(@conversation.inbox.channel), valid: false, reason: 'conversation_not_created' }
-    end
+    return { limit: Sms::FluxMessageLength.limit_for(@conversation.inbox.channel), valid: false, reason: 'conversation_not_created' } if unavailable
 
     analysis = Sms::FluxMessageLength.analyze(message.outgoing_content, @conversation.inbox.channel)
     FluxSmsLengthValidator.new.validate(message)
