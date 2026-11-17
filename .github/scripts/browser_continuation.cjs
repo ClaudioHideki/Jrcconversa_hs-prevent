@@ -29,8 +29,9 @@ async function setMessage(editor, counter, text) {
   await clearEditor(editor);
   await waitFor(async () => (await counter.innerText()).includes('0 / 160'), 'empty counter');
   const responsePromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST' && response.request().postDataJSON().content === text);
-  if (text.includes('{{')) await editor.pressSequentially(text, { delay: 2 });
-  else await editor.fill(text);
+  // Paste into the empty editor so its existing typed-variable input rule does
+  // not expand the template before the request reaches the Rails renderer.
+  await editor.fill(text);
   const response = await responsePromise;
   assert.equal(response.status(), 200);
   const result = await response.json();
