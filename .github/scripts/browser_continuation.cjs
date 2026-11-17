@@ -5,7 +5,7 @@ const { chromium } = require(process.env.JRC_PLAYWRIGHT_MODULE);
 const out = path.resolve('tmp/ci-evidence');
 const fixture = JSON.parse(fs.readFileSync(path.join(out, 'browser-fixtures.json'), 'utf8'));
 const origin = 'http://127.0.0.1:18417';
-const results = [], errors = [], editorActions = [];
+const results = [], errors = [], editorActions = [], previews = [];
 let page, context;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitFor(check, description) {
@@ -29,9 +29,12 @@ async function setMessage(editor, counter, text) {
   await clearEditor(editor);
   await waitFor(async () => (await counter.innerText()).includes('0 / 160'), 'empty counter');
   const responsePromise = page.waitForResponse(response => response.url().endsWith('/sms_preview') && response.request().method() === 'POST' && response.request().postDataJSON().content === text);
-  // Paste into the empty editor so its existing typed-variable input rule does
-  // not expand the template before the request reaches the Rails renderer.
-  await editor.fill(text);
+  if (text.includes('{{')) {
+    await page.evaluate(value => navigator.clipboard.writeText(value), text);
+    await editor.press('Control+V');
+  } else {
+    await editor.fill(text);
+  }
   const response = await responsePromise;
   assert.equal(response.status(), 200);
   const result = await response.json();
@@ -47,9 +50,15 @@ async function test(name, fn) {
   const browser = await chromium.launch({ executablePath: process.env.JRC_CHROME_PATH, headless: true, args: ['--no-sandbox'] });
   try {
     context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, locale: 'pt-BR' });
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
     await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort('blockedbyclient'));
     page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
+    page.on('response', async response => {
+      if (!response.url().endsWith('/sms_preview') || response.request().method() !== 'POST') return;
+      try { previews.push({ source: response.request().postDataJSON().content, status: response.status(), result: await response.json() }); }
+      catch { previews.push({ status: response.status(), invalidPreviewResponse: true }); }
+    });
     await page.goto(`${origin}/app/login`, { waitUntil: 'networkidle' });
     await page.getByTestId('email_input').fill('browser@example.invalid');
     await page.getByTestId('password_input').fill('Isolated-browser-only-2026!');
@@ -212,6 +221,7 @@ async function test(name, fn) {
   } finally {
     fs.writeFileSync(path.join(out, 'browser-results.json'), JSON.stringify({ results, errors, runtime: await browser.version(), isolated: true, realSmsSent: 0 }, null, 2));
     fs.writeFileSync(path.join(out, 'browser-editor-actions.json'), JSON.stringify(editorActions, null, 2));
+    fs.writeFileSync(path.join(out, 'browser-previews.json'), JSON.stringify({ syntheticOnly: true, previews }, null, 2));
     await browser.close();
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
