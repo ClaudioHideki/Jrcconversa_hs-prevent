@@ -61,4 +61,58 @@ RSpec.describe Sms::Providers::FluxService do
       expect(message.source_id).to eq('1234567')
     end
   end
+
+  context 'when configuring callback routing' do
+    it 'uses a dedicated short origin without changing the main URL or the secret token' do
+      with_modified_env FRONTEND_URL: 'https://jrcconversas-lab.jrcws.cloud', FLUX_CALLBACK_BASE_URL: 'https://s.jrcws.cloud/' do
+        token = channel.flux_secrets.fetch('callback_token')
+        service.send_text('5511999999999', 'Callback routing')
+        expect(WebMock).to(have_requested(:post, endpoint).with do |request|
+          body = JSON.parse(request.body)
+          body['urlCallback'] == "https://s.jrcws.cloud/f?t=#{token}" && body['tokenCallback'] == token
+        end)
+        expect(ENV.fetch('FRONTEND_URL')).to eq('https://jrcconversas-lab.jrcws.cloud')
+        expect(channel.reload.flux_secrets.fetch('callback_token')).to eq(token)
+      end
+    end
+
+    it 'preserves the existing origin when the override is empty' do
+      with_modified_env FRONTEND_URL: 'https://a.co/', FLUX_CALLBACK_BASE_URL: '' do
+        expect(channel.flux_callback_url).to eq("https://a.co/f?t=#{channel.flux_secrets.fetch('callback_token')}")
+        expect(service.send_text('5511999999999', 'Legacy routing')).to eq('1234567')
+      end
+    end
+
+    it 'accepts an authenticated callback of exactly 50 characters' do
+      with_modified_env FLUX_CALLBACK_BASE_URL: "https://#{'a' * 17}.com" do
+        expect(channel.flux_callback_url.length).to eq(50)
+        expect(service.send_text('5511999999999', 'Boundary')).to eq('1234567')
+      end
+    end
+
+    ['https://jrcconversas-lab.jrcws.cloud', "https://#{'a' * 18}.com",
+     'https://u:p@a.co', 'https://a.co/#fragment', 'https://a.co/?other=value', 'https://['].each do |base|
+      it "rejects unsupported callback configuration before any HTTP request: #{base}" do
+        with_modified_env FLUX_CALLBACK_BASE_URL: base do
+          expect { service.send_text('5511999999999', 'Invalid callback') }
+            .to(raise_error { |error| expect(error.class.name).to eq('Sms::Providers::FluxService::Error') })
+          expect(WebMock).not_to have_requested(:post, endpoint)
+        end
+      end
+    end
+
+    it 'records a configuration failure without sending, truncating content or revealing the token' do
+      conversation = create(:conversation, account: channel.account, inbox: channel.inbox)
+      message = create(:message, account: channel.account, inbox: channel.inbox, conversation: conversation,
+                                 message_type: :outgoing, content: 'Preserve this draft content')
+      with_modified_env FLUX_CALLBACK_BASE_URL: 'https://jrcconversas-lab.jrcws.cloud' do
+        service.send_message('5511999999999', message)
+        expect(message.reload).to be_failed
+        expect(message.content).to eq('Preserve this draft content')
+        expect(message.external_error).to include('FLUX_CALLBACK_BASE_URL')
+        expect(message.external_error).not_to include(channel.flux_secrets.fetch('callback_token'))
+        expect(WebMock).not_to have_requested(:post, endpoint)
+      end
+    end
+  end
 end

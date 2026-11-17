@@ -22,7 +22,7 @@ RSpec.describe 'Flux delivery webhook', type: :request do
     expect(message.reload).to be_delivered
   end
 
-  it 'accepts the documented tokenCallback header on the long endpoint' do
+  it 'accepts the supported tokenCallback header on the long endpoint' do
     expect do
       post '/api/integrations/flux/callback', params: event, headers: { 'tokenCallback' => token }, as: :json
     end.to have_enqueued_job(Webhooks::FluxEventsJob).with(channel.id, [event.stringify_keys])

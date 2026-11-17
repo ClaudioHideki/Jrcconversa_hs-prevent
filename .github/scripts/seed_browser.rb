@@ -21,8 +21,15 @@ conversation = account.conversations.find(conversations.first[:id])
 message = conversation.messages.create!(account: account, inbox: inbox, sender: user, content: 'SMS fictício aceito', message_type: :outgoing)
 message.update!(source_id: "JRC-SMS-#{message.id}",
                 content_attributes: { flux_partner_id: "JRC-SMS-#{message.id}", flux_phone: '5511999999999' })
+rejections = ['BLOQUEADA', 'NAO ENTREGUE'].map do |status|
+  record = conversation.messages.create!(account: account, inbox: inbox, sender: user,
+                                         content: "SMS ficticio para #{status}", message_type: :outgoing)
+  record.update!(source_id: "JRC-SMS-#{record.id}",
+                 content_attributes: { flux_partner_id: "JRC-SMS-#{record.id}", flux_phone: '5511999999999' })
+  { id: record.id, source_id: record.source_id, status: status }
+end
 File.write('tmp/ci-evidence/browser-fixtures.json', JSON.pretty_generate(
   account_id: account.id, inbox_id: inbox.id, conversations: conversations, delivery_id: message.id,
-  callback_token: channel.flux_secrets.fetch('callback_token'), source_id: message.source_id
+  callback_token: channel.flux_secrets.fetch('callback_token'), source_id: message.source_id, rejections: rejections
 ))
 puts 'PASS: synthetic browser fixtures; no worker or outbound SMS'

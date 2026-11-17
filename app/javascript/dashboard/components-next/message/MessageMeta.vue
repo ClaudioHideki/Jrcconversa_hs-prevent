@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { messageTimestamp } from 'shared/helpers/timeHelper';
 
 import MessageStatus from './MessageStatus.vue';
@@ -36,6 +37,8 @@ const {
 const readableTime = computed(() =>
   messageTimestamp(createdAt.value, 'LLL d, h:mm a')
 );
+
+const { t } = useI18n();
 
 const showStatusIndicator = computed(() => {
   if (isPrivate.value) return false;
@@ -136,6 +139,33 @@ const statusToShow = computed(() => {
 
   return MESSAGE_STATUS.PROGRESS;
 });
+
+const fluxDeliveryLabel = computed(() => {
+  if (statusToShow.value === MESSAGE_STATUS.DELIVERED)
+    return t('CONVERSATION.FLUX_DELIVERY.DELIVERED');
+  if (statusToShow.value === MESSAGE_STATUS.PROGRESS)
+    return t('CONVERSATION.FLUX_DELIVERY.SENDING');
+
+  const state = (contentAttributes.value?.fluxStatus || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+  const labels = {
+    ENVIADA: t('CONVERSATION.FLUX_DELIVERY.SENT'),
+    ACEITA: t('CONVERSATION.FLUX_DELIVERY.ACCEPTED'),
+    AGENDADO: t('CONVERSATION.FLUX_DELIVERY.SCHEDULED'),
+    'EM ANALISE': t('CONVERSATION.FLUX_DELIVERY.ANALYSIS'),
+    'EM ANALISE DE ENVIO PARA OPERADORA': t(
+      'CONVERSATION.FLUX_DELIVERY.ANALYSIS'
+    ),
+    'ANALISE OPERADORA': t('CONVERSATION.FLUX_DELIVERY.ANALYSIS'),
+    'ANALISE LINK (APROVACAO EM ANDAMENTO AGUARDAR)': t(
+      'CONVERSATION.FLUX_DELIVERY.LINK_ANALYSIS'
+    ),
+  };
+  return labels[state] || t('CONVERSATION.FLUX_SENT_PENDING');
+});
 </script>
 
 <template>
@@ -144,6 +174,14 @@ const statusToShow = computed(() => {
       <time class="inline">{{ readableTime }}</time>
     </div>
     <Icon v-if="isPrivate" icon="i-lucide-lock-keyhole" class="size-3" />
+    <span
+      v-if="isFluxSms && showStatusIndicator"
+      class="text-n-slate-11"
+      data-testid="flux-delivery-label"
+      aria-live="polite"
+    >
+      {{ fluxDeliveryLabel }}
+    </span>
     <MessageStatus
       v-if="showStatusIndicator"
       :status="statusToShow"

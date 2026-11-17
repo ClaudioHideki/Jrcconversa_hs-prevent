@@ -117,6 +117,34 @@ async function test(name, fn) {
         await waitFor(async () => !(await send.isDisabled()), 'failed request released');
       });
     }
+    for (const [state, label] of [['EM ANALISE', 'Em análise na Flux'], ['ACEITA', 'Aceita pela Flux'], ['ENVIADA', 'Enviada pela Flux']]) {
+      await test(`Isolated callback shows ${state} without delivery checks`, async () => {
+        const bubble = page.locator(`#message${fixture.delivery_id}`);
+        const response = await context.request.post(`${origin}/f?t=${fixture.callback_token}`, { data: { mensagens: [{
+          telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
+          data: new Date().toISOString(), status: state,
+        }] } });
+        assert.equal(response.status(), 200);
+        assert.equal(await response.text(), 'OK');
+        await waitFor(async () => (await bubble.getByTestId('flux-delivery-label').innerText()) === label, 'provider status label');
+        assert.equal(await bubble.locator('.i-lucide-check-check').count(), 0);
+        if (state === 'EM ANALISE') await page.screenshot({ path: path.join(out, 'browser-flux-analysis.png'), fullPage: true });
+      });
+    }
+    for (const rejection of fixture.rejections) {
+      await test(`Isolated callback displays ${rejection.status} as failure`, async () => {
+        const bubble = page.locator(`#message${rejection.id}`);
+        const response = await context.request.post(`${origin}/f?t=${fixture.callback_token}`, { data: { mensagens: [{
+          telefone: '5511999999999', id: `992${rejection.id}`, idParceiro: rejection.source_id,
+          data: new Date().toISOString(), status: rejection.status,
+        }] } });
+        assert.equal(response.status(), 200);
+        assert.equal(await response.text(), 'OK');
+        const reason = rejection.status === 'BLOQUEADA' ? 'Mensagem bloqueada.' : 'Mensagem não entregue.';
+        await waitFor(async () => (await bubble.innerText()).includes(`Falhou — ${reason}`), 'provider failure label');
+        assert.equal(await bubble.locator('.i-lucide-check-check').count(), 0);
+      });
+    }
     await test('Actual isolated DLR updates database and UI to two checks', async () => {
       const bubble = page.locator(`#message${fixture.delivery_id}`);
       assert.equal(await bubble.locator('.i-lucide-check').count(), 1);
@@ -129,6 +157,7 @@ async function test(name, fn) {
       assert.equal(response.status(), 200);
       assert.equal(await response.text(), 'OK');
       await waitFor(async () => (await bubble.locator('.i-lucide-check-check').count()) === 1, 'real isolated ActionCable delivered');
+      assert.equal(await bubble.getByTestId('flux-delivery-label').innerText(), 'Entregue');
     });
     await page.screenshot({ path: path.join(out, 'browser-delivered.png'), fullPage: true });
     await test('A to B to A navigation keeps the document and history', async () => {

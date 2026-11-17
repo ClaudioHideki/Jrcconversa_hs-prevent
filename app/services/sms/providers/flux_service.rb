@@ -89,7 +89,7 @@ class Sms::Providers::FluxService
     secrets = @channel.flux_secrets
     body = {
       to: phone, tipoEnvio: @channel.provider_config.fetch('send_type', '1').to_s,
-      msg: text, id: partner_id, urlCallback: @channel.flux_callback_url, tokenCallback: secrets.fetch('callback_token')
+      msg: text, id: partner_id, urlCallback: callback_url, tokenCallback: secrets.fetch('callback_token')
     }
     body[:client] = @channel.provider_config['client'] if @channel.provider_config['client'].present?
     response = HTTParty.post(
@@ -105,6 +105,21 @@ class Sms::Providers::FluxService
   end
 
   private
+
+  def callback_url
+    url = @channel.flux_callback_url
+    uri = URI.parse(url)
+    return url if valid_callback_url?(uri, url)
+
+    raise Error, 'Flux: configure FLUX_CALLBACK_BASE_URL com uma URL publica curta. O callback completo aceita no maximo 50 caracteres.'
+  rescue URI::InvalidURIError
+    raise Error, 'Flux: URL de callback invalida. Verifique FLUX_CALLBACK_BASE_URL.'
+  end
+
+  def valid_callback_url?(uri, url)
+    uri.is_a?(URI::HTTP) && uri.host.present? && uri.userinfo.nil? && uri.fragment.nil? &&
+      uri.query == "t=#{@channel.flux_secrets.fetch('callback_token')}" && url.bytesize <= 50
+  end
 
   def reserve_attempt(message, partner_id, phone)
     message.with_lock do

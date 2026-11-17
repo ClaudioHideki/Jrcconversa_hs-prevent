@@ -23,6 +23,15 @@ RSpec.describe Sms::FluxCallbackService do
     expect(message.external_error).to be_nil
   end
 
+  described_class::PENDING.each do |status|
+    it "persists the pending provider state #{status} without claiming delivery" do
+      described_class.new(channel, event.merge('status' => status)).perform
+      expect(message.reload).to be_sent
+      expect(message.content_attributes).to include('flux_status' => status, 'flux_status_at' => '2026-11-15T12:00:00Z')
+      expect(message.external_error).to be_nil
+    end
+  end
+
   it 'marks only a matching delivery confirmation as delivered and emits an update' do
     expect(Rails.configuration.dispatcher).to receive(:dispatch).with('message.updated', anything, hash_including(message: message))
     described_class.new(channel, event).perform

@@ -14,6 +14,15 @@
       "REMOVE": "Characters to remove: {count}."
     },
     "FLUX_SENT_PENDING": "Awaiting delivery confirmation",
+    "FLUX_DELIVERY": {
+      "SENDING": "Awaiting send confirmation",
+      "SENT": "Sent by Flux",
+      "ACCEPTED": "Accepted by Flux",
+      "SCHEDULED": "Scheduled in Flux",
+      "ANALYSIS": "Under review by Flux",
+      "LINK_ANALYSIS": "Link under review by Flux",
+      "DELIVERED": "Delivered"
+    },
     "FLUX_FAILURE": {
       "LABEL": "Failed — {reason}",
       "RETRY_HINT": "Check the result in Flux before creating a new SMS to avoid duplicate delivery.",
@@ -21,7 +30,7 @@
         "SPAM": "Suspected spam.",
         "INVALID_NUMBER": "Invalid number.",
         "BLOCKED_NUMBER": "Number blocked.",
-        "BLOCKED": "Blocked by the carrier.",
+        "BLOCKED": "Message blocked.",
         "REJECTED": "Rejected by the carrier.",
         "EXPIRED": "Delivery expired.",
         "UNDELIVERED": "Message not delivered.",
@@ -30,7 +39,8 @@
         "CANCELLED": "Message cancelled.",
         "LANDLINE": "Landline number.",
         "NO_CREDIT": "Insufficient credit.",
-        "UNKNOWN": "Reason not provided by the provider."
+        "UNKNOWN": "Reason not provided by the provider.",
+        "CALLBACK_CONFIGURATION": "Invalid delivery callback configuration. Contact your administrator."
       }
     },
     "FLUX_FALLBACK": {

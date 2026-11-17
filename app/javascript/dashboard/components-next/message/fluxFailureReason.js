@@ -34,6 +34,11 @@ export const fluxFailureReason = (attributes = {}) => {
 
   const error = attributes.externalError || '';
   if (
+    error.startsWith('Flux: configure FLUX_CALLBACK_BASE_URL') ||
+    error.startsWith('Flux: URL de callback invalida.')
+  )
+    return 'CALLBACK_CONFIGURATION';
+  if (
     /^Flux: a mensagem deve conter de 1 a (160|1280) caracteres\.$/.test(error)
   )
     return 'CHARACTER_LIMIT';

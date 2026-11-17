@@ -14,6 +14,15 @@
       "REMOVE": "Caracteres que precisam ser removidos: {count}."
     },
     "FLUX_SENT_PENDING": "Aguardando confirmação de entrega",
+    "FLUX_DELIVERY": {
+      "SENDING": "Aguardando confirmação de envio",
+      "SENT": "Enviada pela Flux",
+      "ACCEPTED": "Aceita pela Flux",
+      "SCHEDULED": "Agendada na Flux",
+      "ANALYSIS": "Em análise na Flux",
+      "LINK_ANALYSIS": "Link em análise na Flux",
+      "DELIVERED": "Entregue"
+    },
     "FLUX_FAILURE": {
       "LABEL": "Falhou — {reason}",
       "RETRY_HINT": "Confira o resultado na Flux antes de criar um novo SMS para evitar entrega duplicada.",
@@ -21,7 +30,7 @@
         "SPAM": "Suspeita de spam.",
         "INVALID_NUMBER": "Número inválido.",
         "BLOCKED_NUMBER": "Número bloqueado.",
-        "BLOCKED": "Bloqueada pela operadora.",
+        "BLOCKED": "Mensagem bloqueada.",
         "REJECTED": "Rejeitada pela operadora.",
         "EXPIRED": "Prazo de entrega expirado.",
         "UNDELIVERED": "Mensagem não entregue.",
@@ -30,7 +39,8 @@
         "CANCELLED": "Mensagem cancelada.",
         "LANDLINE": "Número de telefone fixo.",
         "NO_CREDIT": "Saldo insuficiente.",
-        "UNKNOWN": "Motivo não informado pelo provedor."
+        "UNKNOWN": "Motivo não informado pelo provedor.",
+        "CALLBACK_CONFIGURATION": "Configuração do retorno de status inválida. Contate o administrador."
       }
     },
     "SELECT_A_CONVERSATION": "Por favor, selecione uma conversa no painel da esquerda",

@@ -92,10 +92,76 @@ describe('Flux delivery and rejection display', () => {
   });
 
   it.each([
+    ['EM ANALISE', 'Em análise na Flux'],
+    [' em análise ', 'Em análise na Flux'],
+    ['EM ANALISE DE ENVIO PARA OPERADORA', 'Em análise na Flux'],
+    ['ANALISE OPERADORA', 'Em análise na Flux'],
+    ['ENVIADA', 'Enviada pela Flux'],
+    ['ACEITA', 'Aceita pela Flux'],
+    ['Agendado', 'Agendada na Flux'],
+    [
+      'ANALISE LINK (APROVACAO EM ANDAMENTO AGUARDAR)',
+      'Link em análise na Flux',
+    ],
+    ['UNKNOWN', 'Aguardando confirmação de entrega'],
+    ['ENTREGUE', 'Aguardando confirmação de entrega'],
+  ])(
+    'labels the last received state %s without claiming delivery',
+    (state, label) => {
+      context.contentAttributes.value = { fluxStatus: state };
+      const wrapper = mount(MessageMeta, options());
+      expect(wrapper.get('[data-testid="flux-delivery-label"]').text()).toBe(
+        label
+      );
+      expect(wrapper.find('[data-icon="i-lucide-check-check"]').exists()).toBe(
+        false
+      );
+    }
+  );
+
+  it('updates the visible label from analysis to sent and actual delivery', async () => {
+    context.contentAttributes.value = { fluxStatus: 'EM ANALISE' };
+    const wrapper = mount(MessageMeta, options());
+    expect(wrapper.text()).toContain('Em análise na Flux');
+    context.contentAttributes.value = { fluxStatus: 'ENVIADA' };
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain('Enviada pela Flux');
+    context.contentAttributes.value = { fluxStatus: 'ENTREGUE' };
+    context.status.value = 'delivered';
+    await wrapper.vm.$nextTick();
+    expect(wrapper.get('[data-testid="flux-delivery-label"]').text()).toBe(
+      'Entregue'
+    );
+    expect(wrapper.find('[data-icon="i-lucide-check-check"]').exists()).toBe(
+      true
+    );
+    context.status.value = 'failed';
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+      false
+    );
+  });
+
+  it.each(['private', 'incoming', 'deleted', 'other-channel'])(
+    'does not add a Flux delivery label to %s messages',
+    kind => {
+      if (kind === 'private') context.isPrivate.value = true;
+      if (kind === 'incoming') context.messageType.value = 0;
+      if (kind === 'deleted')
+        context.contentAttributes.value = { deleted: true };
+      if (kind === 'other-channel') context.isFluxSms.value = false;
+      const wrapper = mount(MessageMeta, options());
+      expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+        false
+      );
+    }
+  );
+
+  it.each([
     ['SPAM', 'Suspeita de spam.'],
     ['NUMERO INVALIDO', 'Número inválido.'],
     ['NUMERO BLOQUEADO', 'Número bloqueado.'],
-    ['BLOQUEADA', 'Bloqueada pela operadora.'],
+    ['BLOQUEADA', 'Mensagem bloqueada.'],
     ['REJEITADA', 'Rejeitada pela operadora.'],
     ['EXPIRADA', 'Prazo de entrega expirado.'],
     ['NAO ENTREGUE', 'Mensagem não entregue.'],
@@ -187,6 +253,20 @@ describe('Flux delivery and rejection display', () => {
     [{ externalError: 'Flux 162: Bloqueada' }, 'BLOCKED'],
     [{ externalError: 'Flux 146: Nao entregue' }, 'UNDELIVERED'],
     [{ externalError: 'Flux 999: Unknown' }, 'UNKNOWN'],
+    [
+      {
+        externalError:
+          'Flux: configure FLUX_CALLBACK_BASE_URL com uma URL publica curta.',
+      },
+      'CALLBACK_CONFIGURATION',
+    ],
+    [
+      {
+        externalError:
+          'Flux: URL de callback invalida. Verifique FLUX_CALLBACK_BASE_URL.',
+      },
+      'CALLBACK_CONFIGURATION',
+    ],
     [{}, 'UNKNOWN'],
   ])(
     'handles existing records without rewriting their metadata: %j',

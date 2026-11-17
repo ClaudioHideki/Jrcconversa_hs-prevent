@@ -9,6 +9,9 @@ app/controllers/api/v1/accounts/conversations/sms_previews_controller.rb
 app/drops/flux_preview_conversation_drop.rb
 app/models/concerns/liquidable.rb
 app/services/sms/flux_message_preview.rb
+app/models/channel/sms.rb
+app/services/sms/providers/flux_service.rb
+spec/services/sms/providers/flux_service_spec.rb
 spec/controllers/api/v1/accounts/conversations/new_flux_sms_preview_spec.rb
 spec/services/twilio/delivery_status_service_spec.rb
 spec/jobs/application_job_logging_spec.rb
