@@ -15,7 +15,6 @@ async function waitFor(check, description) {
 async function clearEditor(editor) {
   for (let attempt = 0; attempt < 3; attempt++) {
     await editor.click();
-    await editor.press('Escape');
     await editor.press('Control+Home');
     await editor.press('Control+Shift+End');
     await sleep(100);
@@ -48,9 +47,15 @@ async function setMessage(editor, counter, text) {
   return response.request().postDataJSON().content;
 }
 async function test(name, fn) {
-  await fn();
-  results.push({ name, status: 'PASS' });
-  console.log(`PASS: ${name}`);
+  try {
+    await fn();
+    results.push({ name, status: 'PASS' });
+    console.log(`PASS: ${name}`);
+  } catch (error) {
+    results.push({ name, status: 'FAIL', error: error.stack });
+    console.error(`FAIL: ${name}: ${error.message}`);
+    await page.screenshot({ path: path.join(out, `browser-failed-case-${results.length}.png`), fullPage: true }).catch(() => {});
+  }
 }
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.JRC_CHROME_PATH, headless: true, args: ['--no-sandbox'] });
@@ -129,9 +134,9 @@ async function test(name, fn) {
     await test('A to B to A navigation keeps the document and history', async () => {
       const epoch = await page.evaluate(() => performance.timeOrigin);
       const b = fixture.conversations[1];
-      await page.locator(`a[href$="/conversations/${b.display_id}"]`).first().click();
+      await page.getByText(b.name, { exact: true }).first().click();
       await page.waitForURL(url => url.pathname.endsWith(`/conversations/${b.display_id}`));
-      await page.locator(`a[href$="/conversations/${conversation.display_id}"]`).first().click();
+      await page.getByText(new RegExp(`^${conversation.name}$`, 'i')).first().click();
       await page.waitForURL(url => url.pathname.endsWith(`/conversations/${conversation.display_id}`));
       assert.equal(await page.evaluate(() => performance.timeOrigin), epoch);
       assert.ok((await page.locator('body').innerText()).includes(conversation.history));
@@ -217,6 +222,7 @@ async function test(name, fn) {
       await popup.waitFor({ state: 'hidden' });
     });
     assert.deepEqual(errors, []);
+    assert.equal(results.filter(result => result.status === 'FAIL').length, 0, 'Every browser scenario must pass');
   } catch (error) {
     results.push({ name: 'Browser suite', status: 'FAIL', error: error.stack });
     if (page) {
