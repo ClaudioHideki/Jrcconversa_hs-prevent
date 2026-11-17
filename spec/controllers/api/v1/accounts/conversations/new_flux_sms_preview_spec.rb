@@ -42,7 +42,7 @@ RSpec.describe 'New Flux SMS conversation preflight API', type: :request do
     expect do
       post "/api/v1/accounts/#{account.id}/conversations",
            params: params.merge(assignee_id: agent.id, message: { content: '{{contact.name}}' }), headers: headers, as: :json
-    end.not_to change { [Message.count, Conversation.count] }
+    end.not_to(change { [Message.count, Conversation.count] })
     expect(response).to have_http_status(:unprocessable_entity)
   end
 
@@ -63,7 +63,7 @@ RSpec.describe 'New Flux SMS conversation preflight API', type: :request do
     expect(HTTParty).not_to receive(:post)
     expect do
       post url, params: params, headers: headers, as: :json
-    end.not_to change { [Conversation.count, Contact.count, ContactInbox.count, Message.count] }
+    end.not_to(change { [Conversation.count, Contact.count, ContactInbox.count, Message.count] })
     expect(response).to have_http_status(:success)
     expect([account.reload.updated_at, contact.reload.updated_at, inbox.reload.updated_at]).to eq(old_times)
     expect(response.parsed_body.keys).to match_array(%w[length limit excess empty valid])
