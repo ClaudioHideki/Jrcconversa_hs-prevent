@@ -35,7 +35,7 @@ class Webhooks::FluxController < ActionController::API
     events = request.request_parameters['mensagens']
     return [] unless events.is_a?(Array) && events.size <= 1000
 
-    events.select { |event| event.is_a?(Hash) && event.key?('token') }.map { |event| event['token'] }
+    events.select { |event| event.is_a?(Hash) && event.key?('token') }.pluck('token')
   end
 
   def valid_events?(events)
