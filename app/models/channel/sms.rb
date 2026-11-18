@@ -66,7 +66,7 @@ class Channel::Sms < ApplicationRecord
 
   def flux_callback_url
     base_url = ENV['FLUX_CALLBACK_BASE_URL'].presence || ENV.fetch('FRONTEND_URL')
-    "#{base_url.delete_suffix('/')}/f?t=#{flux_secrets.fetch('callback_token')}"
+    "#{base_url.delete_suffix('/')}/f"
   end
 
   def flux_mo_polling_enabled?

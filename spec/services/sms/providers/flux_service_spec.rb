@@ -69,7 +69,7 @@ RSpec.describe Sms::Providers::FluxService do
         service.send_text('5511999999999', 'Callback routing')
         expect(WebMock).to(have_requested(:post, endpoint).with do |request|
           body = JSON.parse(request.body)
-          body['urlCallback'] == "https://s.jrcws.cloud/f?t=#{token}" && body['tokenCallback'] == token
+          body['urlCallback'] == 'https://s.jrcws.cloud/f' && body['tokenCallback'] == token
         end)
         expect(ENV.fetch('FRONTEND_URL')).to eq('https://jrcconversas-lab.jrcws.cloud')
         expect(channel.reload.flux_secrets.fetch('callback_token')).to eq(token)
@@ -78,19 +78,27 @@ RSpec.describe Sms::Providers::FluxService do
 
     it 'preserves the existing origin when the override is empty' do
       with_modified_env FRONTEND_URL: 'https://a.co/', FLUX_CALLBACK_BASE_URL: '' do
-        expect(channel.flux_callback_url).to eq("https://a.co/f?t=#{channel.flux_secrets.fetch('callback_token')}")
+        expect(channel.flux_callback_url).to eq('https://a.co/f')
         expect(service.send_text('5511999999999', 'Legacy routing')).to eq('1234567')
       end
     end
 
+    it 'uses the original lab origin within 50 characters without a URL secret' do
+      with_modified_env FRONTEND_URL: 'https://jrcconversas-lab.jrcws.cloud', FLUX_CALLBACK_BASE_URL: '' do
+        expect(channel.flux_callback_url).to eq('https://jrcconversas-lab.jrcws.cloud/f')
+        expect(channel.flux_callback_url.bytesize).to eq(38)
+        expect(service.send_text('5511999999999', 'Body authentication')).to eq('1234567')
+      end
+    end
+
     it 'accepts an authenticated callback of exactly 50 characters' do
-      with_modified_env FLUX_CALLBACK_BASE_URL: "https://#{'a' * 17}.com" do
+      with_modified_env FLUX_CALLBACK_BASE_URL: "https://#{'a' * 36}.com" do
         expect(channel.flux_callback_url.length).to eq(50)
         expect(service.send_text('5511999999999', 'Boundary')).to eq('1234567')
       end
     end
 
-    ['https://jrcconversas-lab.jrcws.cloud', "https://#{'a' * 18}.com",
+    ["https://#{'a' * 37}.com",
      'https://u:p@a.co', 'https://a.co/#fragment', 'https://a.co/?other=value', 'https://['].each do |base|
       it "rejects unsupported callback configuration before any HTTP request: #{base}" do
         with_modified_env FLUX_CALLBACK_BASE_URL: base do
@@ -105,7 +113,7 @@ RSpec.describe Sms::Providers::FluxService do
       conversation = create(:conversation, account: channel.account, inbox: channel.inbox)
       message = create(:message, account: channel.account, inbox: channel.inbox, conversation: conversation,
                                  message_type: :outgoing, content: 'Preserve this draft content')
-      with_modified_env FLUX_CALLBACK_BASE_URL: 'https://jrcconversas-lab.jrcws.cloud' do
+      with_modified_env FLUX_CALLBACK_BASE_URL: "https://#{'a' * 37}.com" do
         service.send_message('5511999999999', message)
         expect(message.reload).to be_failed
         expect(message.content).to eq('Preserve this draft content')

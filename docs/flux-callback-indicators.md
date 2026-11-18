@@ -2,32 +2,31 @@
 
 ## Configuracao
 
-O manual Flux v2.7.2 limita `urlCallback` a 50 caracteres. Esse limite inclui
-o protocolo, dominio, caminho `/f?t=` e o token existente de cada caixa.
-O dominio `https://jrcconversas-lab.jrcws.cloud` gera uma URL de 57 caracteres
-com o token de 16 caracteres usado atualmente.
+O manual Flux v2.7.2 limita `urlCallback` a 50 caracteres. Em esclarecimento
+posterior, o suporte confirmou que `tokenCallback`, enviado pelo JRC, retorna no
+campo JSON `token` de cada evento. O receptor aceita esse formato em eventos
+individuais e no envelope `mensagens`, sem incluir o segredo nos argumentos do job.
 
-`FLUX_CALLBACK_BASE_URL` permite definir um dominio HTTPS curto exclusivo para
-os callbacks Flux. Quando ausente ou vazio, continua sendo usado `FRONTEND_URL`.
-O endereco principal, as demais integracoes e os tokens existentes nao mudam.
+Novos envios usam somente `/f` na URL e conservam `tokenCallback` no corpo da
+requisicao de envio. Nenhum token ou credencial existente e rotacionado. A URL
+padrao `https://jrcconversas-lab.jrcws.cloud/f` tem 38 caracteres. O alias
+`https://flap.jrcws.cloud/f` tem 26. Nao e necessario criar outro dominio quando
+a URL padrao ja respeita o limite e possui HTTPS e roteamento validos.
 
-Antes de configurar essa variavel em uma futura publicacao autorizada:
+`FLUX_CALLBACK_BASE_URL` continua como override opcional exclusivo do Flux;
+quando vazio, usa `FRONTEND_URL`. Nao altera o endereco principal nem as outras
+integracoes. Rails e Sidekiq devem usar a configuracao da mesma instalacao.
 
-- Disponibilizar DNS, certificado TLS valido e roteamento para a mesma
-  instalacao Rails que enviou o SMS; um nome curto no arquivo de ambiente
-  sozinho nao cria esse acesso publico.
-- Conferir que a URL completa de cada caixa cabe nos 50 caracteres.
-- Manter a autenticacao existente. O token permanece na query `t` e tambem no
-  campo `tokenCallback` do envio. A correcao nao depende de a Flux devolver o
-  token em um header ou campo nao especificado completamente pelo manual.
-- Conferir a configuracao tanto no Rails quanto no Sidekiq da mesma instalacao.
-  Nao apontar callbacks do laboratorio para producao.
+O token JSON tem prioridade sobre o antigo `?t=`. Um token JSON invalido nao
+recorre ao token da URL. Eventos com tokens diferentes no mesmo lote sao
+recusados antes do enfileiramento. Requisicoes antigas sem `token` JSON continuam
+aceitando `t`, o header `tokenCallback` ou o antigo campo `tokenCallback`.
+A correlacao continua restrita a caixa, conta, identificador e destinatario.
 
-O adaptador de envio do JRC recusa a tentativa antes de qualquer HTTP se a URL for
-longa, malformada ou perder o parametro de autenticacao. O erro nao inclui
-o token nem a URL completa. O texto da mensagem e preservado; nao ha reenvio
-automatico. HTTPS deve ser usado no endereco publico; HTTP continua aceito
-para preservar a configuracao anterior e permitir testes internos isolados.
+O adaptador recusa antes de qualquer HTTP URLs acima de 50 caracteres,
+malformadas, com credenciais embutidas, query ou fragmento. Erros nao incluem
+tokens. O conteudo e preservado e nao ha reenvio automatico. HTTPS deve ser usado
+publicamente; HTTP continua aceito para compatibilidade e testes isolados.
 
 ## Indicadores
 
@@ -61,5 +60,17 @@ automaticas ao provedor e o erro 910. Os indicadores dependem de callbacks reais
 Esta alteracao nao atualiza mensagens historicas nem muda os enderecos de
 callback ja associados pela Flux aos envios anteriores. A retomada de callbacks
 pausados ou a confirmacao de resultados existentes exige evidencia do provedor.
-O DNS/TLS do dominio curto e a homologacao real continuam pendentes; nenhum
-deploy, publicacao de imagem ou alteracao de ambiente faz parte desta validacao.
+O suporte confirmou tentativas reais com HTTP 401 e desativacao automatica do
+callback global antigo. Isso comprova a falha de autenticacao, mas nao comprova
+qual token foi comparado em cada tentativa. O formato JSON confirmado nao era
+aceito pelo receptor anterior. DNS/HTTPS e comprimento correto, sozinhos, nao
+homologam a autenticacao nem a entrega de eventos.
+
+Depois de uma futura publicacao e instalacao autorizadas, confirmar com a Flux
+por canal seguro a URL e o token da caixa correta e solicitar somente o replay
+do callback da mensagem indicada. Nao reenviar o SMS. Como laboratorio e producao
+compartilham a conta Flux, nao trocar URLs globais, credenciais ou reativar lotes
+sem confirmar que o procedimento nao afeta producao. Conferir HTTP 200 e corpo
+`OK`, processamento do worker, correlacao, persistencia e atualizacao da interface.
+A homologacao real permanece pendente. Nenhum deploy, publicacao de imagem ou
+alteracao de ambiente faz parte desta validacao.

@@ -120,9 +120,9 @@ async function test(name, fn) {
     for (const [state, label] of [['EM ANALISE', 'Em análise na Flux'], ['ACEITA', 'Aceita pela Flux'], ['ENVIADA', 'Enviada pela Flux']]) {
       await test(`Isolated callback shows ${state} without delivery checks`, async () => {
         const bubble = page.locator(`#message${fixture.delivery_id}`);
-        const response = await context.request.post(`${origin}/f?t=${fixture.callback_token}`, { data: { mensagens: [{
+        const response = await context.request.post(`${origin}/f?t=obsolete-test-token`, { data: { mensagens: [{
           telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
-          data: new Date().toISOString(), status: state,
+          data: new Date().toISOString(), status: state, token: fixture.callback_token,
         }] } });
         assert.equal(response.status(), 200);
         assert.equal(await response.text(), 'OK');
@@ -150,9 +150,9 @@ async function test(name, fn) {
       assert.equal(await bubble.locator('.i-lucide-check').count(), 1);
       await bubble.locator('.i-lucide-check').hover();
       await waitFor(async () => (await page.locator('body').innerText()).includes('Aguardando confirmação de entrega'), 'exact tooltip');
-      const response = await context.request.post(`${origin}/f?t=${fixture.callback_token}`, { data: {
+      const response = await context.request.post(`${origin}/f`, { data: {
         telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
-        data: new Date().toISOString(), status: 'ENTREGUE',
+        data: new Date().toISOString(), status: 'ENTREGUE', token: fixture.callback_token, codStatus: '120', operadora: 'TEST',
       } });
       assert.equal(response.status(), 200);
       assert.equal(await response.text(), 'OK');

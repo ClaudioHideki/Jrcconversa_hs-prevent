@@ -118,7 +118,7 @@ class Sms::Providers::FluxService
 
   def valid_callback_url?(uri, url)
     uri.is_a?(URI::HTTP) && uri.host.present? && uri.userinfo.nil? && uri.fragment.nil? &&
-      uri.query == "t=#{@channel.flux_secrets.fetch('callback_token')}" && url.bytesize <= 50
+      uri.query.nil? && url.bytesize <= 50
   end
 
   def reserve_attempt(message, partner_id, phone)
