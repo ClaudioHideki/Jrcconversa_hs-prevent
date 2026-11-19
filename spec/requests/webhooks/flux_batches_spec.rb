@@ -141,7 +141,7 @@ RSpec.describe 'Flux mixed callback batches', type: :request do
     payload = [event, other_event]
     allow(Webhooks::FluxEventsJob).to receive(:perform_later).and_call_original
     allow(Webhooks::FluxEventsJob).to receive(:perform_later).with(other_channel.id, anything)
-                                                           .and_raise(Redis::CannotConnectError, 'Synthetic queue outage')
+                                                             .and_raise(Redis::CannotConnectError, 'Synthetic queue outage')
     post '/f', params: payload, as: :json
     expect(response).to have_http_status(:internal_server_error)
     expect(response.body).not_to eq('OK')

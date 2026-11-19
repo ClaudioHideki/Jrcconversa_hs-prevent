@@ -22,7 +22,7 @@ class Webhooks::FluxController < ActionController::API
   def authenticated_batches(events)
     events.each_with_object({}) do |event, batches|
       channel = authenticated_channel(event.fetch('token') { fallback_token })
-      return unless channel
+      return nil unless channel
 
       (batches[channel.id] ||= []) << event.slice('telefone', 'data', 'id', 'idParceiro', 'idResposta', 'status', 'resposta')
     end
