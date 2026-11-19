@@ -6,12 +6,11 @@ class Sms::FetchFluxStatusJob < ApplicationJob
   def perform(channel_id, message_id, attempt = 0)
     return unless attempt.is_a?(Integer) && attempt.between?(0, MAX_ATTEMPTS - 1)
 
-    channel = Channel::Sms.find_by(id: channel_id, provider: 'flux')
-    return unless channel&.inbox && channel.inbox.account_id == channel.account_id
+    channel = polling_channel(channel_id)
+    return unless channel
 
-    message = channel.inbox.messages.find_by(id: message_id, account_id: channel.account_id, private: false)
-    return unless message&.sent? && message.message_type.in?(%w[outgoing template])
-    return unless message.content_attributes['flux_partner_id'].present?
+    message = pending_message(channel, message_id)
+    return unless message
     return unless reserve_query(channel, message)
 
     poll(channel, message)
@@ -21,6 +20,17 @@ class Sms::FetchFluxStatusJob < ApplicationJob
   end
 
   private
+
+  def polling_channel(channel_id)
+    channel = Channel::Sms.find_by(id: channel_id, provider: 'flux')
+    channel if channel&.inbox && channel.inbox.account_id == channel.account_id
+  end
+
+  def pending_message(channel, message_id)
+    message = channel.inbox.messages.find_by(id: message_id, account_id: channel.account_id, private: false,
+                                            status: :sent, message_type: [:outgoing, :template])
+    message if message&.content_attributes&.fetch('flux_partner_id', nil).present?
+  end
 
   def reserve_query(channel, message)
     account = channel.flux_secrets.fetch('account').downcase

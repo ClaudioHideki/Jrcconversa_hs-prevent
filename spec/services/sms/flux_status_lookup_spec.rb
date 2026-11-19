@@ -80,7 +80,7 @@ RSpec.describe Sms::FluxStatusLookup do
   it 'preserves delivery against duplicate queries and older callbacks' do
     described_class.new(channel).perform(message)
     Sms::FluxCallbackService.new(channel, telefone: '5511999999999', id: '991234', status: 'NAO ENTREGUE',
-                                         data: '2026-11-18T12:00:00Z').perform
+                                          data: '2026-11-18T12:00:00Z').perform
     described_class.new(channel).perform(message)
     expect(message.reload).to be_delivered
   end

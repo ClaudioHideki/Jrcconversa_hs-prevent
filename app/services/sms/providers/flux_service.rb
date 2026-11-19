@@ -53,7 +53,7 @@ class Sms::Providers::FluxService
 
     partner_id = "JRC-SMS-#{message.id}"
     phone = self.class.normalize_phone(phone)
-    return message.source_id unless reserve_attempt(message, partner_id, phone)
+    return resume_status_lookup(message) unless reserve_attempt(message, partner_id, phone)
 
     provider_id = send_text(phone, message.outgoing_content, partner_id: partner_id)
     message.with_lock do
@@ -106,6 +106,11 @@ class Sms::Providers::FluxService
   end
 
   private
+
+  def resume_status_lookup(message)
+    Sms::FetchFluxStatusJob.set(wait: 2.minutes).perform_later(@channel.id, message.id) if message.sent?
+    message.source_id
+  end
 
   def callback_url
     url = @channel.flux_callback_url
