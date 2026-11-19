@@ -120,10 +120,13 @@ async function test(name, fn) {
     for (const [state, label] of [['EM ANALISE', 'Em análise na Flux'], ['ACEITA', 'Aceita pela Flux'], ['ENVIADA', 'Enviada pela Flux']]) {
       await test(`Isolated callback shows ${state} without delivery checks`, async () => {
         const bubble = page.locator(`#message${fixture.delivery_id}`);
-        const response = await context.request.post(`${origin}/f?t=obsolete-test-token`, { data: { mensagens: [{
-          telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
-          data: new Date().toISOString(), status: state, token: fixture.callback_token,
-        }] } });
+        const event = { telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
+          data: new Date().toISOString(), status: state, token: fixture.callback_token };
+        const data = state === 'EM ANALISE' ? [event, {
+          telefone: '5511999999999', id: '998765432', idParceiro: fixture.other.source_id,
+          data: new Date().toISOString(), status: state, token: fixture.other.callback_token,
+        }] : { mensagens: [event] };
+        const response = await context.request.post(`${origin}/f?t=obsolete-test-token`, { data });
         assert.equal(response.status(), 200);
         assert.equal(await response.text(), 'OK');
         await waitFor(async () => (await bubble.getByTestId('flux-delivery-label').innerText()) === label, 'provider status label');
@@ -131,6 +134,21 @@ async function test(name, fn) {
         if (state === 'EM ANALISE') await page.screenshot({ path: path.join(out, 'browser-flux-analysis.png'), fullPage: true });
       });
     }
+    await test('Mixed callback with an unknown token is rejected before any state update', async () => {
+      const response = await context.request.post(`${origin}/f`, { data: [
+        { telefone: '5511999999999', id: '991234567', idParceiro: fixture.source_id,
+          data: new Date().toISOString(), status: 'ENTREGUE', token: fixture.callback_token },
+        { token: 'unknown-isolated-token', status: 'ENTREGUE' },
+      ] });
+      assert.equal(response.status(), 401);
+      const bubble = page.locator(`#message${fixture.delivery_id}`);
+      assert.equal(await bubble.getByTestId('flux-delivery-label').innerText(), 'Enviada pela Flux');
+      assert.equal(await bubble.locator('.i-lucide-check-check').count(), 0);
+    });
+    await test('Mixed callback does not grant access to the other account', async () => {
+      const response = await context.request.get(`${origin}/api/v1/accounts/${fixture.other.account_id}/conversations/${fixture.other.display_id}/messages`);
+      assert.ok([401, 403, 404].includes(response.status()));
+    });
     for (const rejection of fixture.rejections) {
       await test(`Isolated callback displays ${rejection.status} as failure`, async () => {
         const bubble = page.locator(`#message${rejection.id}`);

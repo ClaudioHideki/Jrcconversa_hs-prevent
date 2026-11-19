@@ -60,16 +60,16 @@ RSpec.describe 'Flux delivery webhook', type: :request do
     expect(response.body).to eq('OK')
   end
 
-  it 'rejects mixed account tokens before queueing or modifying messages' do
+  it 'authenticates an event with its own token instead of an envelope token' do
     other_channel = create(:channel_sms, provider: 'flux', flux_account: 'other@example.invalid', flux_code: 'dummy-only')
     expect do
       post '/f', params: { token: token, mensagens: [event.merge(token: other_channel.flux_secrets.fetch('callback_token'))] }, as: :json
-    end.not_to have_enqueued_job(Webhooks::FluxEventsJob)
-    expect(response).to have_http_status(:unauthorized)
+    end.to have_enqueued_job(Webhooks::FluxEventsJob).with(other_channel.id, [event.stringify_keys])
+    expect(response.body).to eq('OK')
     expect(message.reload).to be_sent
   end
 
-  it 'rejects mixed nested tokens even with a valid legacy URL credential' do
+  it 'rejects an unknown event token even with a valid legacy URL credential' do
     expect do
       post '/f', params: { t: token, mensagens: [event.merge(token: token), event.merge(token: 'another-token')] }, as: :json
     end.not_to have_enqueued_job(Webhooks::FluxEventsJob)

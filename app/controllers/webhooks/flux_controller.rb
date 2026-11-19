@@ -1,41 +1,47 @@
 class Webhooks::FluxController < ActionController::API
   def process_payload
-    channel = authenticated_channel
-    return head :unauthorized unless channel
-
-    raw = request.request_parameters
-    events = raw['mensagens'] || [raw]
+    events = callback_events
     return head :unprocessable_entity unless valid_events?(events)
 
-    events = events.map { |event| event.slice('telefone', 'data', 'id', 'idParceiro', 'idResposta', 'status', 'resposta') }
-    Webhooks::FluxEventsJob.perform_later(channel.id, events)
+    batches = authenticated_batches(events)
+    return head :unauthorized unless batches
+
+    batches.each do |channel_id, batch|
+      return head :service_unavailable unless Webhooks::FluxEventsJob.perform_later(channel_id, batch)
+    end
     render plain: 'OK'
   end
 
   private
 
-  def authenticated_channel
-    token = callback_token
+  def callback_events
+    raw = request.request_parameters
+    raw['_json'] || raw['mensagens'] || [raw]
+  end
+
+  def authenticated_batches(events)
+    events.each_with_object({}) do |event, batches|
+      channel = authenticated_channel(event.fetch('token') { fallback_token })
+      return unless channel
+
+      (batches[channel.id] ||= []) << event.slice('telefone', 'data', 'id', 'idParceiro', 'idResposta', 'status', 'resposta')
+    end
+  end
+
+  def authenticated_channel(token)
     return unless token.is_a?(String) && token.bytesize.between?(1, 50)
 
-    Channel::Sms.find_by(provider: 'flux', flux_callback_digest: Digest::SHA256.hexdigest(token))
+    digest = Digest::SHA256.hexdigest(token)
+    @channels ||= {}
+    @channels[digest] ||= Channel::Sms.find_by(provider: 'flux', flux_callback_digest: digest)
   end
 
-  def callback_token
+  def fallback_token
     raw = request.request_parameters
-    tokens = event_tokens
-    tokens << raw['token'] if raw.key?('token')
-    return if tokens.uniq.size > 1
-    return tokens.first unless tokens.empty?
+    return if raw.key?('_json')
+    return raw['token'] if raw.key?('token')
 
     params[:t].presence || request.headers['tokenCallback'].presence || params[:tokenCallback].presence
-  end
-
-  def event_tokens
-    events = request.request_parameters['mensagens']
-    return [] unless events.is_a?(Array) && events.size <= 1000
-
-    events.select { |event| event.is_a?(Hash) && event.key?('token') }.pluck('token')
   end
 
   def valid_events?(events)

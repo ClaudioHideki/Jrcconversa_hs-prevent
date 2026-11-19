@@ -146,6 +146,8 @@ RSpec.describe 'Flux mixed callback batches', type: :request do
     expect(response).to have_http_status(:internal_server_error)
     expect(response.body).not_to eq('OK')
     expect(Webhooks::FluxEventsJob).to have_been_enqueued.with(channel.id, anything)
+    perform_enqueued_jobs(only: Webhooks::FluxEventsJob)
+    expect(message.reload).to be_delivered
     allow(Webhooks::FluxEventsJob).to receive(:perform_later).with(other_channel.id, anything).and_call_original
     perform_enqueued_jobs(only: Webhooks::FluxEventsJob) { post '/f', params: payload, as: :json }
     expect(response.body).to eq('OK')
@@ -159,6 +161,20 @@ RSpec.describe 'Flux mixed callback batches', type: :request do
     expect(response).to have_http_status(:service_unavailable)
     expect(response.body).not_to eq('OK')
     expect(message.reload).to be_sent
+  end
+
+  it 'preserves isolated incoming replies and deduplicates retried mixed batches' do
+    payload = [event.merge(status: 'RESPOSTA', resposta: 'Synthetic LAB reply'),
+               other_event.merge(status: 'RESPOSTA', resposta: 'Synthetic HS reply')]
+    expect(HTTParty).not_to receive(:post)
+    expect do
+      perform_enqueued_jobs(only: Webhooks::FluxEventsJob) do
+        2.times { post '/f', params: payload, as: :json }
+      end
+    end.to change(Message, :count).by(2)
+    expect(response.body).to eq('OK')
+    expect(conversation.messages.incoming.pluck(:content)).to eq(['Synthetic LAB reply'])
+    expect(other_conversation.messages.incoming.pluck(:content)).to eq(['Synthetic HS reply'])
   end
 
   it 'filters credentials and phones in Rails normalized direct-array parameters' do

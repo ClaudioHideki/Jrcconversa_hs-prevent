@@ -28,8 +28,19 @@ rejections = ['BLOQUEADA', 'NAO ENTREGUE'].map do |status|
                  content_attributes: { flux_partner_id: "JRC-SMS-#{record.id}", flux_phone: '5511999999999' })
   { id: record.id, source_id: record.source_id, status: status }
 end
+other_account = Account.create!(name: 'Other isolated account', locale: 'pt_BR')
+other_channel = other_account.sms_channels.create!(provider: 'flux', flux_account: 'other@example.invalid', flux_code: 'LOCAL-NO-SEND')
+other_inbox = other_account.inboxes.create!(name: 'Other isolated SMS inbox', channel: other_channel)
+other_contact = other_account.contacts.create!(name: 'Other synthetic contact', phone_number: '+5511999999999')
+other_contact_inbox = ContactInbox.create!(contact: other_contact, inbox: other_inbox, source_id: other_contact.phone_number)
+other_conversation = other_account.conversations.create!(inbox: other_inbox, contact: other_contact, contact_inbox: other_contact_inbox)
+other_message = other_conversation.messages.create!(account: other_account, inbox: other_inbox, content: 'Other isolated SMS', message_type: :outgoing)
+other_message.update!(source_id: "JRC-SMS-#{other_message.id}",
+                      content_attributes: { flux_partner_id: "JRC-SMS-#{other_message.id}", flux_phone: '5511999999999' })
 File.write('tmp/ci-evidence/browser-fixtures.json', JSON.pretty_generate(
   account_id: account.id, inbox_id: inbox.id, conversations: conversations, delivery_id: message.id,
-  callback_token: channel.flux_secrets.fetch('callback_token'), source_id: message.source_id, rejections: rejections
+  callback_token: channel.flux_secrets.fetch('callback_token'), source_id: message.source_id, rejections: rejections,
+  other: { account_id: other_account.id, display_id: other_conversation.display_id, source_id: other_message.source_id,
+           callback_token: other_channel.flux_secrets.fetch('callback_token') }
 ))
 puts 'PASS: synthetic browser fixtures; no worker or outbound SMS'

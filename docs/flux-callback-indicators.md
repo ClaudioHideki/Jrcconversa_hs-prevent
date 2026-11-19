@@ -5,7 +5,8 @@
 O manual Flux v2.7.2 limita `urlCallback` a 50 caracteres. Em esclarecimento
 posterior, o suporte confirmou que `tokenCallback`, enviado pelo JRC, retorna no
 campo JSON `token` de cada evento. O receptor aceita esse formato em eventos
-individuais e no envelope `mensagens`, sem incluir o segredo nos argumentos do job.
+individuais, no envelope `mensagens` e em listas JSON diretas `[{...}]`, sem incluir
+o segredo nos argumentos do job.
 
 Novos envios usam somente `/f` na URL e conservam `tokenCallback` no corpo da
 requisicao de envio. Nenhum token ou credencial existente e rotacionado. A URL
@@ -17,11 +18,28 @@ a URL padrao ja respeita o limite e possui HTTPS e roteamento validos.
 quando vazio, usa `FRONTEND_URL`. Nao altera o endereco principal nem as outras
 integracoes. Rails e Sidekiq devem usar a configuracao da mesma instalacao.
 
-O token JSON tem prioridade sobre o antigo `?t=`. Um token JSON invalido nao
-recorre ao token da URL. Eventos com tokens diferentes no mesmo lote sao
-recusados antes do enfileiramento. Requisicoes antigas sem `token` JSON continuam
-aceitando `t`, o header `tokenCallback` ou o antigo campo `tokenCallback`.
-A correlacao continua restrita a caixa, conta, identificador e destinatario.
+Cada evento usa seu proprio `token` JSON, com prioridade sobre credenciais do
+envelope ou da URL. Tokens diferentes sao aceitos quando todos autenticam caixas
+Flux desta mesma instalacao. O receptor agrupa os eventos por caixa e enfileira
+jobs separados, sem misturar contas ou destinatarios. A correlacao existente por
+caixa, conta, identificador e telefone permanece obrigatoria.
+
+Listas diretas exigem token em todos os eventos; nao herdam `t` da URL. Eventos
+individuais e envelopes antigos sem token por evento preservam a autenticacao por
+token do envelope, `t`, header `tokenCallback` ou antigo campo `tokenCallback`.
+Um token explicito invalido nunca recorre a uma credencial alternativa.
+
+Todos os eventos sao autenticados antes de qualquer enfileiramento. Tokens
+invalidos ou desconhecidos retornam 401 e impedem o lote inteiro. Um token da HS
+nao cadastrado no LAB nao pode ser aceito pelo LAB: a Flux deve encaminhar os
+eventos a instalacao correta. Essa correcao nao encaminha dados entre servidores.
+Lotes vazios, malformados ou com mais de 1000 eventos retornam 422.
+
+O retorno HTTP 200 com corpo `OK` so ocorre apos todos os grupos serem
+enfileirados. Uma recusa de enqueue retorna 503; uma excecao da fila nao recebe
+`OK`. Se a falha ocorrer apos enfileirar um grupo, o provedor deve poder repetir
+o lote: o processamento existente preserva idempotencia e estados finais.
+O 200 confirma autenticacao e enqueue, nao confirma a execucao posterior do worker.
 
 O adaptador recusa antes de qualquer HTTP URLs acima de 50 caracteres,
 malformadas, com credenciais embutidas, query ou fragmento. Erros nao incluem
