@@ -11,6 +11,7 @@ class Sms::FetchFluxStatusJob < ApplicationJob
 
     message = pending_message(channel, message_id)
     return unless message
+
     poll(channel, message) if reserve_query(channel, message)
     return unless message.reload.sent? && attempt + 1 < MAX_ATTEMPTS
 
