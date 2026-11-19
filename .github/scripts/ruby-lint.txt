@@ -19,3 +19,7 @@ spec/lib/sensitive_job_error_logger_spec.rb
 spec/jobs/action_cable_broadcast_job_spec.rb
 spec/requests/webhooks/flux_spec.rb
 spec/requests/webhooks/flux_batches_spec.rb
+spec/services/sms/flux_status_lookup_spec.rb
+spec/jobs/sms/fetch_flux_status_job_spec.rb
+app/services/sms/flux_status_lookup.rb
+app/jobs/sms/fetch_flux_status_job.rb

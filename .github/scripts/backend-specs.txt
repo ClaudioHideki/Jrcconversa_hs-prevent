@@ -20,3 +20,5 @@ spec/jobs/action_cable_broadcast_job_spec.rb
 spec/jobs/event_dispatcher_job_spec.rb
 spec/jobs/mutex_application_job_spec.rb
 spec/requests/webhooks/flux_batches_spec.rb
+spec/services/sms/flux_status_lookup_spec.rb
+spec/jobs/sms/fetch_flux_status_job_spec.rb

@@ -59,6 +59,7 @@ class Sms::Providers::FluxService
     message.with_lock do
       message.update!(source_id: provider_id) if message.source_id.blank?
     end
+    Sms::FetchFluxStatusJob.set(wait: 2.minutes).perform_later(@channel.id, message.id)
     provider_id
   rescue Error => e
     record_failure(message, e.message)
