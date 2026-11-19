@@ -100,11 +100,12 @@ describe('Flux delivery and rejection display', () => {
     );
   });
 
-  it('keeps each grouped outgoing Flux SMS state visible', () => {
+  it('keeps grouped metadata without a visible pending provider label', () => {
     context.contentAttributes.value = { fluxStatus: 'EM ANALISE' };
     const wrapper = mount(BaseBubble, options());
-    expect(wrapper.get('[data-testid="flux-delivery-label"]').text()).toBe(
-      'Em análise na Flux'
+    expect(wrapper.findComponent(MessageMeta).exists()).toBe(true);
+    expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+      false
     );
   });
 
@@ -141,27 +142,31 @@ describe('Flux delivery and rejection display', () => {
     ],
     ['UNKNOWN', 'Aguardando confirmação de entrega'],
     ['ENTREGUE', 'Aguardando confirmação de entrega'],
-  ])(
-    'labels the last received state %s without claiming delivery',
-    (state, label) => {
-      context.contentAttributes.value = { fluxStatus: state };
-      const wrapper = mount(MessageMeta, options());
-      expect(wrapper.get('[data-testid="flux-delivery-label"]').text()).toBe(
-        label
-      );
-      expect(wrapper.find('[data-icon="i-lucide-check-check"]').exists()).toBe(
-        false
-      );
-    }
-  );
+  ])('labels the last received state %s without claiming delivery', state => {
+    context.contentAttributes.value = { fluxStatus: state };
+    const wrapper = mount(MessageMeta, options());
+    expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+      false
+    );
+    expect(wrapper.getComponent(MessageStatus).props('sentTooltip')).toBe(
+      'Aguardando confirmação de entrega'
+    );
+    expect(wrapper.find('[data-icon="i-lucide-check-check"]').exists()).toBe(
+      false
+    );
+  });
 
   it('updates the visible label from analysis to sent and actual delivery', async () => {
     context.contentAttributes.value = { fluxStatus: 'EM ANALISE' };
     const wrapper = mount(MessageMeta, options());
-    expect(wrapper.text()).toContain('Em análise na Flux');
+    expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+      false
+    );
     context.contentAttributes.value = { fluxStatus: 'ENVIADA' };
     await wrapper.vm.$nextTick();
-    expect(wrapper.text()).toContain('Enviada pela Flux');
+    expect(wrapper.find('[data-testid="flux-delivery-label"]').exists()).toBe(
+      false
+    );
     context.contentAttributes.value = { fluxStatus: 'ENTREGUE' };
     context.status.value = 'delivered';
     await wrapper.vm.$nextTick();

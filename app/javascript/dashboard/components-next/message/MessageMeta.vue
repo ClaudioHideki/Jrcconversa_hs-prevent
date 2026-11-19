@@ -140,32 +140,11 @@ const statusToShow = computed(() => {
   return MESSAGE_STATUS.PROGRESS;
 });
 
-const fluxDeliveryLabel = computed(() => {
-  if (statusToShow.value === MESSAGE_STATUS.DELIVERED)
-    return t('CONVERSATION.FLUX_DELIVERY.DELIVERED');
-  if (statusToShow.value === MESSAGE_STATUS.PROGRESS)
-    return t('CONVERSATION.FLUX_DELIVERY.SENDING');
-
-  const state = (contentAttributes.value?.fluxStatus || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .trim();
-  const labels = {
-    ENVIADA: t('CONVERSATION.FLUX_DELIVERY.SENT'),
-    ACEITA: t('CONVERSATION.FLUX_DELIVERY.ACCEPTED'),
-    AGENDADO: t('CONVERSATION.FLUX_DELIVERY.SCHEDULED'),
-    'EM ANALISE': t('CONVERSATION.FLUX_DELIVERY.ANALYSIS'),
-    'EM ANALISE DE ENVIO PARA OPERADORA': t(
-      'CONVERSATION.FLUX_DELIVERY.ANALYSIS'
-    ),
-    'ANALISE OPERADORA': t('CONVERSATION.FLUX_DELIVERY.ANALYSIS'),
-    'ANALISE LINK (APROVACAO EM ANDAMENTO AGUARDAR)': t(
-      'CONVERSATION.FLUX_DELIVERY.LINK_ANALYSIS'
-    ),
-  };
-  return labels[state] || t('CONVERSATION.FLUX_SENT_PENDING');
-});
+const fluxDeliveryLabel = computed(() =>
+  statusToShow.value === MESSAGE_STATUS.DELIVERED
+    ? t('CONVERSATION.FLUX_DELIVERY.DELIVERED')
+    : ''
+);
 </script>
 
 <template>
@@ -175,7 +154,7 @@ const fluxDeliveryLabel = computed(() => {
     </div>
     <Icon v-if="isPrivate" icon="i-lucide-lock-keyhole" class="size-3" />
     <span
-      v-if="isFluxSms && showStatusIndicator"
+      v-if="isFluxSms && showStatusIndicator && fluxDeliveryLabel"
       class="text-n-slate-11"
       data-testid="flux-delivery-label"
       aria-live="polite"
