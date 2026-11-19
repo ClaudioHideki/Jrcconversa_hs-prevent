@@ -111,7 +111,7 @@ RSpec.describe 'Flux mixed callback batches', type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
-  [[], [nil], ['invalid'], [{ token: 'invalid' }, nil]].each do |invalid|
+  [[], [nil], ['invalid'], [{ token: 'invalid' }, 42]].each do |invalid|
     it 'rejects a malformed direct array before enqueueing' do
       expect { post '/f', params: invalid, as: :json }.not_to have_enqueued_job(Webhooks::FluxEventsJob)
       expect(response).to have_http_status(:unprocessable_entity)
