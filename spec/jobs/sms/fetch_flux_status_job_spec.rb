@@ -25,7 +25,7 @@ RSpec.describe Sms::FetchFluxStatusJob, type: :job do
     clear_enqueued_jobs
     described_class.perform_now(channel.id, message.id)
     expect(lookup).to have_received(:perform).once
-    expect(described_class).not_to have_been_enqueued
+    expect(described_class).to have_been_enqueued.with(channel.id, message.id, 1)
   end
 
   it 'stops after a delivery callback' do

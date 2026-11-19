@@ -11,9 +11,7 @@ class Sms::FetchFluxStatusJob < ApplicationJob
 
     message = pending_message(channel, message_id)
     return unless message
-    return unless reserve_query(channel, message)
-
-    poll(channel, message)
+    poll(channel, message) if reserve_query(channel, message)
     return unless message.reload.sent? && attempt + 1 < MAX_ATTEMPTS
 
     self.class.set(wait: 5.minutes).perform_later(channel.id, message.id, attempt + 1)
@@ -28,7 +26,7 @@ class Sms::FetchFluxStatusJob < ApplicationJob
 
   def pending_message(channel, message_id)
     message = channel.inbox.messages.find_by(id: message_id, account_id: channel.account_id, private: false,
-                                            status: :sent, message_type: [:outgoing, :template])
+                                             status: :sent, message_type: [:outgoing, :template])
     message if message&.content_attributes&.fetch('flux_partner_id', nil).present?
   end
 
