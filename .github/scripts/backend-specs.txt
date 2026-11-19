@@ -19,3 +19,4 @@ spec/lib/sensitive_job_error_logger_spec.rb
 spec/jobs/action_cable_broadcast_job_spec.rb
 spec/jobs/event_dispatcher_job_spec.rb
 spec/jobs/mutex_application_job_spec.rb
+spec/requests/webhooks/flux_batches_spec.rb
