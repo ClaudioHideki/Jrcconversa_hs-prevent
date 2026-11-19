@@ -40,18 +40,16 @@ RSpec.describe Sms::Providers::FluxService do
       expect(WebMock).to have_requested(:post, endpoint).once
     end
 
-    it 'schedules a status lookup after acceptance without claiming delivery' do
+    it 'enqueues a status lookup immediately after acceptance without claiming delivery' do
       expect { service.send_message('5511999999999', message) }
-        .to have_enqueued_job(Sms::FetchFluxStatusJob).with(channel.id, message.id)
+        .to have_enqueued_job(Sms::FetchFluxStatusJob).with(channel.id, message.id).at(:no_wait)
       expect(message.reload).to be_sent
     end
 
     it 'recovers a status enqueue failure without sending the SMS again' do
-      scheduler = instance_double(ActiveJob::ConfiguredJob)
-      allow(scheduler).to receive(:perform_later).and_raise(Redis::CannotConnectError, 'Synthetic queue failure')
-      allow(Sms::FetchFluxStatusJob).to receive(:set).and_return(scheduler)
+      allow(Sms::FetchFluxStatusJob).to receive(:perform_later).and_raise(Redis::CannotConnectError, 'Synthetic queue failure')
       expect { service.send_message('5511999999999', message) }.to raise_error(Redis::CannotConnectError)
-      allow(Sms::FetchFluxStatusJob).to receive(:set).and_call_original
+      allow(Sms::FetchFluxStatusJob).to receive(:perform_later).and_call_original
       expect { service.send_message('5511999999999', message.reload) }
         .to have_enqueued_job(Sms::FetchFluxStatusJob).with(channel.id, message.id)
       expect(WebMock).to have_requested(:post, endpoint).once

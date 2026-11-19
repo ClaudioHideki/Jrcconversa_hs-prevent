@@ -1,13 +1,14 @@
 # Flux: consulta automatica de status
 
-Todos os novos SMS Flux aceitos pelo adaptador agendam consulta em 2 minutos.
+Todos os novos SMS Flux aceitos pelo adaptador enfileiram a primeira consulta imediatamente.
 Nao ha novos envios de SMS pelo job. Usa GET HTTPS /integracao3.do com type=C,
 credenciais da caixa e id=flux_partner_id (ID do sistema de origem).
 Manual v2.7.2: secoes 1.3-1.7, paginas 6-8; codigos HTTP na pagina 14.
 Nao misturar esses codigos com a tabela de outro protocolo da pagina 23.
 
-Consultas pendentes repetem a cada 5 minutos, no maximo 288 tentativas (~24h).
-Trava Redis de 90 segundos por login Flux e ID coordena jobs e caixas desta
+Consultas pendentes repetem a cada 65 segundos, no maximo 1330 ciclos e 24h desde
+a criacao da mensagem. Erros preservam recuo de 5 minutos inclusive para jobs
+duplicados. Trava Redis de 65 segundos por login Flux e ID coordena jobs e caixas desta
 instalacao. Nao coordena servidores independentes. Consultas manuais externas
 podem provocar 910; a tentativa e adiada sem inventar status.
 
@@ -26,3 +27,8 @@ Ao esgotar as tentativas o estado e preservado, sem presumir falha ou entrega.
 Nao faz varredura nem atualizacao automatica de mensagens historicas.
 Reconciliacao historica exigira procedimento separado, com limite e aprovacao.
 Nao ha publicacao de imagem ou deploy nesta etapa.
+
+65 segundos e uma margem sobre o limite de mesmo codigo no mesmo minuto (910).
+Nao ha garantia de entrega ou sincronizacao instantanea: depende do DLR da Flux,
+da fila e da resposta HTTP. Uma alteracao logo apos uma consulta pode levar
+aproximadamente 65s mais fila/rede; callbacks podem antecipar esse retorno.

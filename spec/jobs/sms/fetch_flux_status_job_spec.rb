@@ -13,9 +13,9 @@ RSpec.describe Sms::FetchFluxStatusJob, type: :job do
 
   before { allow(Sms::FluxStatusLookup).to receive(:new).with(channel).and_return(lookup) }
 
-  it 'queries once and schedules the next pending lookup after five minutes' do
+  it 'queries once and schedules the next pending lookup after 65 seconds' do
     expect { described_class.perform_now(channel.id, message.id) }
-      .to have_enqueued_job(described_class).with(channel.id, message.id, 1).at(a_value_within(3.seconds).of(5.minutes.from_now))
+      .to have_enqueued_job(described_class).with(channel.id, message.id, 1).at(a_value_within(3.seconds).of(65.seconds.from_now))
     expect(lookup).to have_received(:perform).once
     expect(described_class.log_arguments).to be(false)
   end
@@ -26,6 +26,34 @@ RSpec.describe Sms::FetchFluxStatusJob, type: :job do
     described_class.perform_now(channel.id, message.id)
     expect(lookup).to have_received(:perform).once
     expect(described_class).to have_been_enqueued.with(channel.id, message.id, 1)
+  end
+
+  it 'uses a 65-second shared throttle for the queried identity' do
+    allow(Redis::Alfred).to receive(:set).and_call_original
+    described_class.perform_now(channel.id, message.id)
+    expect(Redis::Alfred).to have_received(:set).with(anything, '1', nx: true, ex: 65)
+  end
+
+  it 'backs off errors for five minutes and keeps duplicate jobs behind that cooldown' do
+    key = nil
+    allow(Redis::Alfred).to receive(:set).and_wrap_original do |original, *args, **kwargs|
+      key = args.first
+      original.call(*args, **kwargs)
+    end
+    allow(lookup).to receive(:perform).and_raise(Sms::FluxStatusLookup::Error, 'Synthetic 910')
+    described_class.perform_now(channel.id, message.id)
+    expect(Redis::Alfred.ttl(key)).to be_between(295, 300)
+    clear_enqueued_jobs
+    expect { described_class.perform_now(channel.id, message.id) }
+      .to have_enqueued_job(described_class).at(a_value_within(5.seconds).of(5.minutes.from_now))
+    expect(lookup).to have_received(:perform).once
+  end
+
+  it 'stops at the 24-hour deadline independently of the number of attempts' do
+    message.update!(created_at: 25.hours.ago)
+    described_class.perform_now(channel.id, message.id)
+    expect(lookup).not_to have_received(:perform)
+    expect(described_class).not_to have_been_enqueued
   end
 
   it 'stops after a delivery callback' do
