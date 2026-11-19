@@ -47,9 +47,11 @@ RSpec.describe Sms::Providers::FluxService do
     end
 
     it 'recovers a status enqueue failure without sending the SMS again' do
-      allow(Sms::FetchFluxStatusJob).to receive(:perform_later).and_raise(Redis::CannotConnectError, 'Synthetic queue failure')
+      scheduler = instance_double(ActiveJob::ConfiguredJob)
+      allow(scheduler).to receive(:perform_later).and_raise(Redis::CannotConnectError, 'Synthetic queue failure')
+      allow(Sms::FetchFluxStatusJob).to receive(:set).and_return(scheduler)
       expect { service.send_message('5511999999999', message) }.to raise_error(Redis::CannotConnectError)
-      allow(Sms::FetchFluxStatusJob).to receive(:perform_later).and_call_original
+      allow(Sms::FetchFluxStatusJob).to receive(:set).and_call_original
       expect { service.send_message('5511999999999', message.reload) }
         .to have_enqueued_job(Sms::FetchFluxStatusJob).with(channel.id, message.id)
       expect(WebMock).to have_requested(:post, endpoint).once

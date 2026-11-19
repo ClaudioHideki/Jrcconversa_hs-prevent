@@ -4,7 +4,7 @@ class Sms::FetchFluxStatusJob < ApplicationJob
   MAX_ATTEMPTS = 288
 
   def perform(channel_id, message_id, attempt = 0)
-    return unless attempt.is_a?(Integer) && attempt.between?(0, MAX_ATTEMPTS - 1)
+    return unless attempt.between?(0, MAX_ATTEMPTS - 1)
 
     channel = polling_channel(channel_id)
     return unless channel
